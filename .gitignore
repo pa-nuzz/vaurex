@@ -1,0 +1,45 @@
+# Node / Next
+frontend/.next/
+frontend/node_modules/
+frontend/.turbo/
+frontend/.vercel/
+frontend/out/
+frontend/coverage/
+
+# Python
+backend/__pycache__/
+backend/**/*.pyc
+backend/nagin/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# Generic Python
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.venv/
+venv/
+
+# Env / secrets
+backend/.env
+frontend/.env.local
+backend/.env.*
+frontend/.env*
+!backend/.env.example
+!frontend/.env.local.example
+
+# Logs
+*.log
+backend/*.log
+frontend/*.log
+backend/job_queue.sqlite3
+backend/job_payloads/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
