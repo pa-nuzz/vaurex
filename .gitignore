@@ -9,7 +9,7 @@ frontend/coverage/
 # Python
 backend/__pycache__/
 backend/**/*.pyc
-backend/nagin/
+backend/vaurex/
 backend/.pytest_cache/
 backend/.mypy_cache/
 backend/.ruff_cache/
