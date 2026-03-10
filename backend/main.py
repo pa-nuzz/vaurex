@@ -71,6 +71,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await start_job_worker()
+    logger.info(
+        "cors.origins.active",
+        extra={"origins": sorted(ALLOWED_ORIGINS)},
+    )
     try:
         yield
     finally:
@@ -81,9 +85,10 @@ app = FastAPI(title="Vaurex API", version="3.0.0", lifespan=lifespan)
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+ALLOWED_ORIGINS = {FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"}
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=sorted(ALLOWED_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -198,3 +203,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/")
+async def root():
+    return {"service": "Vaurex API", "status": "ok", "version": "3.0.0"}

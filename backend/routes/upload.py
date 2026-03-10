@@ -61,7 +61,7 @@ async def upload_file(
         extra={
             "scan_id": scan_id,
             "user_id": user["id"],
-            "filename": safe_name,
+            "upload_filename": safe_name,
             "size_bytes": len(content),
         },
     )
@@ -71,7 +71,7 @@ async def upload_file(
         outcome="success",
         user_id=user["id"],
         scan_id=scan_id,
-        filename=safe_name,
+        upload_filename=safe_name,
         size_bytes=len(content),
     )
 
