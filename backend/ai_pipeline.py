@@ -30,6 +30,34 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 
 TEXT_MIN_LENGTH = 10  # Minimum chars to consider extraction successful
 
+_IMAGE_EXT_TO_MIME = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+}
+
+
+def _infer_mime_type(filename: str, content_type: str) -> str:
+    """Infer a safe MIME type from content-type and filename extension."""
+    normalized = (content_type or "").split(";", 1)[0].strip().lower()
+    if normalized == "application/pdf":
+        return "application/pdf"
+    if normalized.startswith("image/"):
+        return normalized
+
+    ext = os.path.splitext((filename or "").lower())[1]
+    if ext == ".pdf":
+        return "application/pdf"
+    if ext in _IMAGE_EXT_TO_MIME:
+        return _IMAGE_EXT_TO_MIME[ext]
+
+    return "image/jpeg"
+
 
 def _extract_json_object(text: str) -> Optional[dict]:
     """Parse JSON even when wrapped in markdown/code fences."""
@@ -94,7 +122,7 @@ async def _gemini_vision_extract(data: bytes, mime: str) -> str:
         return ""
 
     models = ["gemini-2.0-flash", "gemini-1.5-flash"]
-    out_mime = "application/pdf" if mime == "application/pdf" else "image/png"
+    out_mime = mime if mime else "image/jpeg"
     b64 = base64.b64encode(data).decode()
 
     for model in models:
@@ -140,13 +168,17 @@ async def _gemini_vision_extract(data: bytes, mime: str) -> str:
             text = "\n".join(part.get("text", "") for part in parts).strip()
             if len(text) >= TEXT_MIN_LENGTH:
                 return text
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "scan.extraction.provider_error",
+                extra={"provider": "gemini", "model": model, "error": str(e)},
+            )
             continue
     return ""
 
 
 async def _groq_vision_extract(data: bytes) -> str:
-    """Fallback OCR using Groq llama-3.2-11b-vision-preview."""
+    """Fallback OCR using Groq vision-capable model."""
     if not GROQ_API_KEY:
         return ""
     try:
@@ -154,7 +186,7 @@ async def _groq_vision_extract(data: bytes) -> str:
         b64 = base64.b64encode(processed).decode()
         response = await asyncio.to_thread(
             groq_client.chat.completions.create,
-            model="llama-3.2-11b-vision-preview",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{
                 "role": "user",
                 "content": [
@@ -166,7 +198,15 @@ async def _groq_vision_extract(data: bytes) -> str:
         )
         content = response.choices[0].message.content or ""
         return content.strip()
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "scan.extraction.provider_error",
+            extra={
+                "provider": "groq",
+                "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+                "error": str(e),
+            },
+        )
         return ""
 
 
@@ -174,7 +214,8 @@ async def _extract_text(
     data: bytes, filename: str, content_type: str, scan_id: Optional[str] = None
 ) -> str:
     """Multi-strategy text extraction with structured logging."""
-    is_pdf = content_type == "application/pdf" or filename.lower().endswith(".pdf")
+    mime = _infer_mime_type(filename, content_type)
+    is_pdf = mime == "application/pdf"
 
     # Strategy 1: pypdf for text-based PDFs
     if is_pdf:
@@ -191,7 +232,6 @@ async def _extract_text(
         )
 
     # Strategy 2: Gemini Vision
-    mime = content_type if is_pdf else "image/png"
     text = await _gemini_vision_extract(data, mime)
     if len(text) >= TEXT_MIN_LENGTH:
         logger.info(
