@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000").trim();
 
 function buildUrl(path: string): string {
+  if (path.startsWith("/api/")) {
+    return path;
+  }
   const base = BACKEND_URL.replace(/\/+$/, "");
   const p = path.startsWith("/") ? path : `/${path}`;
   return `${base}${p}`;
