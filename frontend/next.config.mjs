@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  experimental: {
+    proxyClientMaxBodySize: 25 * 1024 * 1024,
+  },
   images: {
     unoptimized: true,
   },
