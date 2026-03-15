@@ -826,7 +826,7 @@ export default function WorkbenchClient() {
           fetchHistory();
           fetchStats();
           if (status === "done") {
-            router.push(`/workbench/scan/${scanId}`);
+            setResult({ ...data, status: "done" as ScanResult["status"] });
             return;
           }
           setResult({ ...data, status: status === "failure" ? "failed" : status as ScanResult["status"] });
