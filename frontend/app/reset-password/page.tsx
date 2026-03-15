@@ -18,6 +18,17 @@ function ResetPasswordInner() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  function sanitizeResetError(message: string): string {
+    const m = message.toLowerCase();
+    if (m.includes("expired") || m.includes("invalid") || m.includes("jwt")) {
+      return "Reset link is invalid or expired. Request a new reset email.";
+    }
+    if (m.includes("too many") || m.includes("rate limit")) {
+      return "Too many attempts. Please wait and try again.";
+    }
+    return "Unable to update password right now. Please try again.";
+  }
+
   useEffect(() => {
     const code = params.get("code");
     if (!code) {
@@ -59,7 +70,7 @@ function ResetPasswordInner() {
     setSaving(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(sanitizeResetError(updateError.message));
       return;
     }
 
@@ -68,8 +79,8 @@ function ResetPasswordInner() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 460, background: "var(--bg-surface)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 32 }}>
+    <div className="auth-shell" style={{ overflow: "auto" }}>
+      <div className="auth-card" style={{ maxWidth: 460, border: "1px solid var(--border-primary)", borderRadius: 16, marginTop: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.02em" }}>
           Set a new password
         </h1>

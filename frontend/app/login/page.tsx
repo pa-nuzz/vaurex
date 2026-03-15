@@ -104,18 +104,7 @@ function LoginInner() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg-base)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
+    <div className="auth-shell">
       {/* Radial gradient background glow */}
       <div
         style={{
@@ -141,11 +130,8 @@ function LoginInner() {
       {/* Back to Home button */}
       <Link
         href="/"
+        className="auth-back-link"
         style={{
-          position: "absolute",
-          top: 24,
-          left: 24,
-          zIndex: 10,
           display: "flex",
           alignItems: "center",
           gap: 6,
@@ -164,19 +150,7 @@ function LoginInner() {
       </Link>
 
       {/* Login card */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          position: "relative",
-          zIndex: 1,
-          background: "var(--bg-surface)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 16,
-          padding: 40,
-        }}
-      >
+      <div className="auth-card" style={{ maxWidth: 460 }}>
         {/* Logo */}
         <div
           style={{

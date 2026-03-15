@@ -19,7 +19,21 @@ import {
   Shield,
   Crown,
 } from "lucide-react";
-import { GoogleButton, AuthDivider, OtpInput } from "@/components/ui/OtpInput";
+import { GoogleButton, AuthDivider } from "@/components/ui/OtpInput";
+
+function sanitizeRegisterErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("already") || m.includes("exists") || m.includes("taken")) {
+    return "An account with this email already exists.";
+  }
+  if (m.includes("password") && m.includes("weak")) {
+    return "Please choose a stronger password.";
+  }
+  if (m.includes("too many") || m.includes("rate limit")) {
+    return "Too many attempts. Please wait and try again.";
+  }
+  return "Unable to create your account right now. Please try again.";
+}
 
 function RegisterInner() {
   const router = useRouter();
@@ -30,9 +44,7 @@ function RegisterInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<"free" | "pro">("free");
-  const [step, setStep] = useState<'form'|'verify'>('form');
   const [loading, setLoading] = useState(false);
-  const [verifyLoading, setVerifyLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -62,28 +74,6 @@ function RegisterInner() {
   const strength = password.length === 0 ? 0 : password.length < 6 ? 1 : password.length < 10 ? 2 : 3;
   const strengthLabel = ["", "Weak", "Good", "Strong"][strength];
   const strengthColor = ["", "var(--danger)", "var(--pro)", "var(--success)"][strength];
-
-  async function handleVerifyOtp(code: string) {
-    setVerifyLoading(true);
-    setError('');
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code,
-      type: 'signup'
-    });
-    if (error) {
-      setError('Invalid or expired code. Try again.');
-      setVerifyLoading(false);
-      return;
-    }
-    router.push('/workbench');
-  }
-
-  async function handleResend() {
-    setResendLoading(true);
-    await supabase.auth.resend({ type: 'signup', email });
-    setResendLoading(false);
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,7 +105,7 @@ function RegisterInner() {
         ) {
           setIsDuplicateEmail(true);
         } else {
-          setError(error.message);
+          setError(sanitizeRegisterErrorMessage(error.message));
         }
         return;
       }
@@ -151,7 +141,7 @@ function RegisterInner() {
         },
       });
       if (error) {
-        setError(error.message);
+        setError(sanitizeRegisterErrorMessage(error.message));
         return;
       }
     } finally {
@@ -160,18 +150,7 @@ function RegisterInner() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg-base)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
+    <div className="auth-shell">
       {/* Radial gradient background glow */}
       <div
         style={{
@@ -197,11 +176,8 @@ function RegisterInner() {
       {/* Back to Home button */}
       <Link
         href="/"
+        className="auth-back-link"
         style={{
-          position: "absolute",
-          top: 24,
-          left: 24,
-          zIndex: 10,
           display: "flex",
           alignItems: "center",
           gap: 6,
@@ -219,19 +195,7 @@ function RegisterInner() {
         <ArrowLeft size={16} /> Home
       </Link>
 
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 440,
-          position: "relative",
-          zIndex: 1,
-          background: "var(--bg-surface)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 16,
-          padding: 40,
-        }}
-      >
+      <div className="auth-card" style={{ maxWidth: 520 }}>
         {/* Logo */}
         <div
           style={{
@@ -723,258 +687,7 @@ function RegisterInner() {
 
             <GoogleButton onClick={handleGoogleLogin} loading={googleLoading} />
             <AuthDivider />
-            {step === 'form' && (
-              <div style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-primary)",
-                borderRadius: 16,
-                padding: 32,
-                display: "flex",
-                gap: 24,
-                alignItems: "flex-start"
-              }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 12,
-                  background: "var(--accent-dim)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0
-                }}>
-                  <Mail size={24} color="var(--accent-primary)" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
-                    1. Create your account
-                  </h3>
-                  <form onSubmit={handleSubmit}>
-                    <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: "var(--text-1)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter your full name"
-                        style={{
-                          width: "100%",
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--border-primary)",
-                          borderRadius: 8,
-                          padding: "12px 44px 12px 44px",
-                          fontSize: 14,
-                          color: "var(--text-1)",
-                          outline: "none",
-                          transition: "border-color 150ms",
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: "var(--text-1)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email address"
-                        style={{
-                          width: "100%",
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--border-primary)",
-                          borderRadius: 8,
-                          padding: "12px 44px 12px 44px",
-                          fontSize: 14,
-                          color: "var(--text-1)",
-                          outline: "none",
-                          transition: "border-color 150ms",
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: "var(--text-1)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="•••••••"
-                        style={{
-                          width: "100%",
-                          background: "var(--bg-elevated)",
-                          border: "1px solid var(--border-primary)",
-                          borderRadius: 8,
-                          padding: "12px 44px 12px 44px",
-                          fontSize: 14,
-                          color: "var(--text-1)",
-                          outline: "none",
-                          transition: "border-color 150ms",
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        marginBottom: 16,
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "var(--text-1)",
-                            marginBottom: 8,
-                          }}
-                        >
-                          Plan
-                        </label>
-                        <select
-                          value={selectedPlan}
-                          onChange={(e) => setSelectedPlan(e.target.value as "free" | "pro")}
-                          style={{
-                            width: "100%",
-                            background: "var(--bg-elevated)",
-                            border: "1px solid var(--border-primary)",
-                            borderRadius: 8,
-                            padding: "12px 44px 12px 44px",
-                            fontSize: 14,
-                            color: "var(--text-1)",
-                            outline: "none",
-                            transition: "border-color 150ms",
-                          }}
-                        >
-                          <option value="free">Free - 5 scans/day</option>
-                          <option value="pro">Pro - Unlimited scans</option>
-                        </select>
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      style={{
-                        width: "100%",
-                        padding: "12px 24px",
-                        background: "var(--accent-orange)",
-                        color: "white",
-                        border: "none",
-                        borderRadius: 8,
-                        fontSize: 15,
-                        fontWeight: 600,
-                        cursor: loading ? "not-allowed" : "pointer",
-                        transition: "all 0.15s"
-                      }}
-                    >
-                      {loading ? 'Creating account...' : 'Create account'}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
 
-            {step === 'verify' && (
-              <div style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border-primary)",
-                borderRadius: 16,
-                padding: 32,
-                display: "flex",
-                gap: 24,
-                alignItems: "flex-start"
-              }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 12,
-                  background: "var(--blue-dim)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0
-                }}>
-                  <Mail size={24} color="var(--blue)" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
-                    2. Verify your email
-                  </h3>
-                  <p style={{ fontSize: 16, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
-                    We sent a 6-digit code to <strong>{email}</strong>
-                  </p>
-                  <OtpInput onComplete={handleVerifyOtp} loading={verifyLoading} />
-                  <div style={{ marginTop: 16 }}>
-                    <button
-                      onClick={handleResend}
-                      disabled={resendLoading}
-                      style={{
-                        padding: "8px 16px",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        borderRadius: 8,
-                        border: "none",
-                        cursor: resendLoading ? "not-allowed" : "pointer",
-                        transition: "all 0.15s",
-                        color: resendLoading ? "var(--text-3)" : "var(--accent-primary)"
-                      }}
-                    >
-                      {resendLoading ? 'Resend code' : 'Resend code'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {step === 'verify' && done && (
-              <div style={{
-                textAlign: "center",
-                marginTop: 48,
-                padding: 32,
-                background: "var(--bg-surface)",
-                borderRadius: 16,
-                border: "1px solid var(--border-primary)"
-              }}>
-                <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>
-                  Account created!
-                </h2>
-                <p style={{ fontSize: 16, color: "var(--text-secondary)", marginBottom: 16 }}>
-                  Redirecting you to workbench...
-                </p>
-              </div>
-            )}
             <p
               style={{
                 textAlign: "center",

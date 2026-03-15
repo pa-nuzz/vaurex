@@ -110,8 +110,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ width: "100%", maxWidth: 460, background: "var(--bg-surface)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 32 }}>
+    <div className="auth-shell" style={{ overflow: "auto" }}>
+      <div className="auth-card" style={{ maxWidth: 460, border: "1px solid var(--border-primary)", borderRadius: 16, marginTop: 24 }}>
         <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14, textDecoration: "none", marginBottom: 24 }}>
           <ArrowLeft size={16} /> Back to login
         </Link>
