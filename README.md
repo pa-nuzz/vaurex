@@ -1,9 +1,5 @@
 # 🚀 Vaurex - Document Intelligence Platform
 
-<div align="center">
-
-![Vaurex Logo](https://via.placeholder.com/200x80/FF6B35/FFFFFF?text=VAUREX)
-
 **AI-Powered Document Analysis & Risk Assessment Platform**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -12,7 +8,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green)](https://fastapi.tiangolo.com/)
 
-[▶️ Live Demo](https://vaurex-demo.com) · [📖 Documentation](https://docs.vaurex.com) · [🎮 Try Demo](https://vaurex-demo.com/demo)
 
 </div>
 
@@ -72,22 +67,7 @@
 - **Security**: Rate limiting, audit trails
 - **Testing**: Pytest with 100% coverage
 
-### Project Structure
 
-```
-vaurex/
-├── frontend/                 # Next.js frontend application
-│   ├── app/                  # App Router pages
-│   ├── components/           # React components
-│   ├── lib/                  # Utilities and helpers
-│   └── public/               # Static assets
-├── backend/                  # FastAPI backend API
-│   ├── routes/               # API endpoints
-│   ├── services/             # Business logic
-│   ├── ai_pipeline.py        # AI document analysis
-│   └── tests/                # Test suite
-└── README.md                 # This file
-```
 
 ## 🚀 Quick Start
 
@@ -101,7 +81,7 @@ vaurex/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/vaurex.git
+git clone https://github.com/pa-nuzz/vaurex.git
 cd vaurex
 
 # Frontend Setup
@@ -256,12 +236,6 @@ npm run test:e2e
 npm run test:a11y
 ```
 
-### Test Coverage
-- ✅ **Backend**: 6 test suites covering all API endpoints
-- ✅ **Frontend**: Component and integration tests
-- ✅ **E2E**: Critical user journey tests
-- ✅ **Security**: Authentication and authorization tests
-
 ## 🔒 Security
 
 ### Implemented Measures
@@ -305,96 +279,6 @@ For magic link authentication, configure SMTP in Supabase dashboard:
 - Enter your SMTP credentials
 - Set redirect URLs to your frontend
 
-## 🚀 Deployment
-
-### Docker Compose
-```yaml
-version: '3.8'
-services:
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - NEXT_PUBLIC_BACKEND_URL=http://backend:8080
-
-  backend:
-    build: ./backend
-    ports:
-      - "8080:8080"
-    environment:
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-```
-
-### Production Deployment
-```bash
-# Frontend (Vercel recommended)
-cd frontend
-vercel --prod
-
-# Backend (Docker)
-cd backend
-docker build -t vaurex-backend .
-docker run -p 8080:8080 vaurex-backend
-```
-
-## 📊 Monitoring
-
-### Logging
-Structured JSON logging with request IDs:
-```json
-{
-  "ts": "2026-03-14T05:00:00",
-  "level": "INFO",
-  "logger": "main",
-  "msg": "http.request",
-  "request_id": "uuid",
-  "method": "POST",
-  "path": "/api/v1/upload",
-  "status_code": 200,
-  "duration_ms": 150
-}
-```
-
-### Health Checks
-- **Health**: `/health` - Basic service status
-- **Ready**: `/ready` - Database and external service checks
-- **Metrics**: `/metrics` - Application metrics (if configured)
-
-## 🤝 Contributing
-
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes
-4. Add tests for new functionality
-5. Run tests: `pytest` (backend) and `npm test` (frontend)
-6. Submit a pull request
-
-### Code Standards
-- **Backend**: Python 3.12+, Black formatting, Ruff linting
-- **Frontend**: TypeScript 5.0+, Prettier formatting, ESLint
-- **Commits**: Conventional commit messages
-- **Tests**: 100% coverage for new features
-
-### Setting Up Development Environment
-```bash
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# Frontend
-cd frontend
-npm install
-```
 
 ## 📄 License
 
@@ -430,10 +314,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Built with ❤️ by the Vaurex Team**
-
-[![Twitter](https://img.shields.io/twitter/follow/vaurex?style=social)](https://twitter.com/vaurex)
-[![GitHub stars](https://img.shields.io/github/stars/your-org/vaurex?style=social)](https://github.com/your-org/vaurex)
-[![Discord](https://img.shields.io/discord/1234567890?label=discord&style=social)](https://discord.gg/vaurex)
+**Built with 🗿 by the Vaurex Team**
 
 </div>
