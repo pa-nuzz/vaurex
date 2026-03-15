@@ -195,18 +195,18 @@ export default function LandingClient() {
   }
 
   const features = [
-    { icon: Shield,     title: "Risk Scoring",       desc: "AI assigns a 0–100 risk score with evidence-based reasoning, not guesswork." },
-    { icon: FileSearch, title: "Entity Extraction",   desc: "Names, orgs, dates, financial figures — automatically tagged and categorized." },
-    { icon: Brain,      title: "Executive Summary",   desc: "Get a concise, actionable brief that captures what the document means." },
-    { icon: Zap,        title: "Instant Processing",  desc: "Upload to results in seconds. Multi-model AI pipeline with smart fallbacks." },
-    { icon: Eye,        title: "OCR Vision",          desc: "Scanned PDFs and screenshots are no problem — AI vision reads any image." },
-    { icon: Lock,       title: "End-to-End Secure",   desc: "Your documents are encrypted and never stored longer than processing requires." },
+    { icon: Shield,     title: "Risk Scoring",       desc: "Get a clear 0–100 risk score backed by evidence from the actual document." },
+    { icon: FileSearch, title: "Entity Extraction",   desc: "People, companies, dates, and amounts are pulled out automatically." },
+    { icon: Brain,      title: "Executive Summary",   desc: "Read a plain-English summary you can share with your team right away." },
+    { icon: Zap,        title: "Instant Processing",  desc: "Upload your file and get results in seconds, not hours." },
+    { icon: Eye,        title: "OCR Vision",          desc: "Scans and screenshots work too — not just clean digital PDFs." },
+    { icon: Lock,       title: "End-to-End Secure",   desc: "Your files stay protected and are not kept longer than needed." },
   ];
 
   const steps = [
-    { num: "01", title: "Upload",  desc: "Drag & drop any PDF, image, or screenshot into the workbench." },
-    { num: "02", title: "Analyze", desc: "Our multi-model AI pipeline extracts text, entities, and risk signals." },
-    { num: "03", title: "Act",     desc: "Review the intelligence report, risk score, and take action instantly." },
+    { num: "01", title: "Upload",  desc: "Drop in a PDF, photo, or screenshot from your device." },
+    { num: "02", title: "Analyze", desc: "Vaurex reads the file, extracts key details, and flags potential risk." },
+    { num: "03", title: "Act",     desc: "Review the report, share findings, and decide next steps quickly." },
   ];
 
   return (
@@ -360,7 +360,7 @@ export default function LandingClient() {
       <Fade>
         <div style={{ borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", background: "var(--bg-surface)" }}>
           <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 24px", display: "flex", justifyContent: "center", gap: 64, flexWrap: "wrap" }}>
-            {[{ value: "< 10s", label: "Avg. analysis time" }, { value: "99.2%", label: "OCR accuracy" }, { value: "3+", label: "AI models in pipeline" }].map((s, i) => (
+            {[{ value: "< 10s", label: "Typical analysis time" }, { value: "99.2%", label: "OCR accuracy" }, { value: "3+", label: "Models working together" }].map((s, i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <div className="font-display" style={{ fontSize: 26, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em", marginBottom: 4 }}>{s.value}</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)" }}>{s.label}</div>
@@ -447,9 +447,9 @@ export default function LandingClient() {
             {/* Feature mini-cards */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { icon: BarChart3,     title: "Risk Intelligence",  desc: "Evidence-based scoring with document-specific reasoning." },
-                { icon: FileSearch,    title: "Deep Extraction",    desc: "Entities, dates, financials — automatically structured." },
-                { icon: AlertTriangle, title: "Fraud Detection",    desc: "Flag suspicious patterns and anomalies in real-time." },
+                { icon: BarChart3,     title: "Risk Intelligence",  desc: "See why a document is risky, not just a score number." },
+                { icon: FileSearch,    title: "Deep Extraction",    desc: "Important names, dates, and figures are organized for you." },
+                { icon: AlertTriangle, title: "Fraud Detection",    desc: "Spot suspicious patterns before they become expensive mistakes." },
               ].map((f, i) => (
                 <Fade key={i} delay={i * 0.08}>
                   <div className="vx-card vx-card-hover" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -474,7 +474,7 @@ export default function LandingClient() {
           <div style={{ textAlign: "center", marginBottom: 52 }}>
             <div className="vx-overline">What you get</div>
             <h2 className="font-display" style={{ fontSize: 34, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em" }}>Everything you need</h2>
-            <p style={{ color: "var(--text-2)", fontSize: 15, maxWidth: 440, margin: "10px auto 0" }}>A complete document intelligence toolkit, powered by a multi-model AI pipeline.</p>
+            <p style={{ color: "var(--text-2)", fontSize: 15, maxWidth: 440, margin: "10px auto 0" }}>Everything in one place to review documents faster and make better calls.</p>
           </div>
         </Fade>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
@@ -498,7 +498,7 @@ export default function LandingClient() {
           <div style={{ textAlign: "center", marginBottom: 52 }}>
             <div className="vx-overline">Process</div>
             <h2 className="font-display" style={{ fontSize: 34, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em" }}>How it works</h2>
-            <p style={{ color: "var(--text-2)", fontSize: 15 }}>Three simple steps to actionable document intelligence.</p>
+            <p style={{ color: "var(--text-2)", fontSize: 15 }}>Three simple steps, from upload to clear decisions.</p>
           </div>
         </Fade>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
@@ -528,15 +528,15 @@ export default function LandingClient() {
           <div style={{ textAlign: "center", marginBottom: 52 }}>
             <div className="vx-overline">Pricing</div>
             <h2 className="font-display" style={{ fontSize: 34, fontWeight: 800, color: "var(--text-1)", letterSpacing: "-0.02em" }}>Choose your plan</h2>
-            <p style={{ color: "var(--text-2)", fontSize: 15, maxWidth: 400, margin: "10px auto 0" }}>Start free, upgrade when you need more.</p>
+            <p style={{ color: "var(--text-2)", fontSize: 15, maxWidth: 400, margin: "10px auto 0" }}>Start free today, then upgrade only if your workload grows.</p>
           </div>
         </Fade>
 
         <div className="pricing-three-col" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {[
-            { id: "free",    label: "Free",    price: "$0",     period: "forever",       color: "var(--accent)", dimColor: "var(--accent-dim)",       borderColor: "var(--accent-border)",         features: ["5 document scans/day", "5 chat sessions/day", "Risk scoring + extraction", "Daily reset"],                link: "/register?plan=free",                                              cta: "Start free",     icon: Shield,  featured: false },
-            { id: "pro",     label: "Pro",     price: "$19",    period: "per month",     color: "var(--blue)",   dimColor: "var(--blue-dim)",         borderColor: "var(--blue-border)",           features: ["Unlimited scans", "Unlimited chat", "Priority processing", "Advanced exports"],                   link: "/register?plan=pro",                                               cta: "Get Pro",        icon: Crown,   featured: true  },
-            { id: "pro_max", label: "Pro Max", price: "Custom", period: "contact us",    color: "#A78BFA",       dimColor: "rgba(167,139,250,0.10)", borderColor: "rgba(167,139,250,0.22)",       features: ["Everything in Pro", "Custom AI models", "API access", "Dedicated support"],                        link: "mailto:support@vaurex.com?subject=Pro Max Inquiry",                cta: "Contact sales",  icon: Crown,   featured: false },
+            { id: "free",    label: "Free",    price: "$0",     period: "forever",       color: "var(--accent)", dimColor: "var(--accent-dim)",       borderColor: "var(--accent-border)",         features: ["5 document scans per day", "5 chat sessions per day", "Core risk + entity analysis", "Resets every day"],         link: "/register?plan=free",                                              cta: "Start free",     icon: Shield,  featured: false },
+            { id: "pro",     label: "Pro",     price: "$19",    period: "per month",     color: "var(--blue)",   dimColor: "var(--blue-dim)",         borderColor: "var(--blue-border)",           features: ["Unlimited scans", "Unlimited chat", "Faster processing", "Expanded export options"],                  link: "/register?plan=pro",                                               cta: "Get Pro",        icon: Crown,   featured: true  },
+            { id: "pro_max", label: "Pro Max", price: "Custom", period: "contact us",    color: "#A78BFA",       dimColor: "rgba(167,139,250,0.10)", borderColor: "rgba(167,139,250,0.22)",       features: ["Everything in Pro", "Custom AI setup", "API access", "Dedicated onboarding + support"],              link: "mailto:support@vaurex.com?subject=Pro Max Inquiry",                cta: "Contact sales",  icon: Crown,   featured: false },
           ].map((plan, i) => (
             <Fade key={i} delay={i * 0.08}>
               <div style={{
@@ -586,7 +586,7 @@ export default function LandingClient() {
           <div className="vx-overline" style={{ display: "flex", justifyContent: "center" }}>Get started</div>
           <h2 className="font-display" style={{ fontSize: 34, fontWeight: 800, color: "var(--text-1)", marginBottom: 12, letterSpacing: "-0.02em" }}>Ready to get started?</h2>
           <p style={{ color: "var(--text-2)", fontSize: 15, maxWidth: 400, margin: "0 auto 32px", lineHeight: 1.7 }}>
-            Join professionals using AI to analyze documents instantly.
+            Start with a free account and see how much faster document review can feel.
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <Link href="/register?plan=free" className="vx-btn vx-btn-ghost" style={{ padding: "12px 26px", fontSize: 14 }}>
