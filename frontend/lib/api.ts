@@ -118,14 +118,28 @@ export async function apiJson<T>(
 }
 
 export function safeUiError(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) {
-    if (error.message === "Request timeout") {
-      return "The request timed out. Please try again.";
-    }
-    if (error.message === "Failed to fetch" || error.message === "Load failed") {
-      return "Unable to connect. Please check your connection and that the server is running.";
-    }
-    return error.message;
+  if (!(error instanceof Error) || !error.message) {
+    return fallback;
   }
-  return fallback;
+
+  const message = error.message;
+  if (message === "Request timeout") return "The request timed out. Please try again.";
+  if (message === "Failed to fetch" || message === "Load failed") {
+    return "Unable to connect. Please check your connection and that the server is running.";
+  }
+
+  const allowlisted = new Set([
+    "The request could not be completed.",
+    "Your session has expired. Please sign in again.",
+    "You are not allowed to perform this action.",
+    "The requested resource was not found.",
+    "Too many requests. Please wait and try again.",
+    "Unable to connect. Please check your connection and that the server is running.",
+    "Upload failed",
+    "Download failed",
+    "Delete failed.",
+    "Unauthorized",
+  ]);
+
+  return allowlisted.has(message) ? message : fallback;
 }

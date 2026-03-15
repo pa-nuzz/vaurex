@@ -8,6 +8,20 @@ import { apiJson } from "@/lib/api";
 import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
 import { GoogleButton, AuthDivider } from "@/components/ui/OtpInput";
 
+function sanitizeLoginErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("invalid login credentials") || m.includes("invalid") || m.includes("credentials")) {
+    return "Invalid email or password.";
+  }
+  if (m.includes("email not confirmed") || m.includes("verify")) {
+    return "Please verify your email before signing in.";
+  }
+  if (m.includes("too many") || m.includes("rate limit")) {
+    return "Too many attempts. Please wait and try again.";
+  }
+  return "Sign in failed. Please try again.";
+}
+
 function LoginInner() {
   const params = useSearchParams();
   const router = useRouter();
@@ -41,7 +55,7 @@ function LoginInner() {
           setError("No verification code provided. Please check your email link.");
           break;
         default:
-          setError(`Authentication error: ${authError}`);
+          setError("Authentication error. Please try again.");
       }
     }
   }, [authError, authMessage]);
@@ -65,7 +79,7 @@ function LoginInner() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setError(error.message);
+        setError(sanitizeLoginErrorMessage(error.message));
         return;
       }
 

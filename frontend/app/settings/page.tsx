@@ -10,6 +10,21 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
 
+function sanitizeSettingsError(error: unknown, fallback: string): string {
+  if (!(error instanceof Error) || !error.message) return fallback;
+  const m = error.message.toLowerCase();
+  if (m.includes("session") || m.includes("auth") || m.includes("jwt")) {
+    return "Session issue detected. Please sign in again.";
+  }
+  if (m.includes("too many") || m.includes("rate limit")) {
+    return "Too many attempts. Please wait and try again.";
+  }
+  if (m.includes("payload too large") || m.includes("size")) {
+    return "The selected file is too large.";
+  }
+  return fallback;
+}
+
 export default function SettingsPage() {
   const supabase = useMemo(() => createClient(), []);
   const { toast } = useToast();
@@ -95,7 +110,7 @@ export default function SettingsPage() {
       if (updateError) throw updateError;
       toast.success("Profile picture updated!");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Error uploading profile picture.");
+      toast.error(sanitizeSettingsError(err, "Error uploading profile picture."));
     } finally {
       setUploading(false);
     }
@@ -108,7 +123,7 @@ export default function SettingsPage() {
       if (error) throw error;
       toast.success("Profile updated successfully.");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Unable to update your profile.");
+      toast.error(sanitizeSettingsError(err, "Unable to update your profile."));
     } finally { setSaving(false); }
   };
 
@@ -122,7 +137,7 @@ export default function SettingsPage() {
       toast.success("Password updated successfully.");
       setNewPassword(""); setConfirmPassword("");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Unable to update password.");
+      toast.error(sanitizeSettingsError(err, "Unable to update password."));
     } finally { setSaving(false); }
   };
 

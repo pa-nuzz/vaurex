@@ -62,18 +62,24 @@ const FREE_CHAT_LIMIT = 6;
 const PROCESSING_STAGES = ["Uploading", "OCR extraction", "Entity recognition", "Risk assessment", "Generating report"];
 
 async function responseErrorMessage(response: Response, fallback: string): Promise<string> {
-  try {
-    const body = await response.json();
-    const detail = body?.detail;
-    if (typeof detail === "string" && detail.trim()) return detail;
-    if (detail && typeof detail === "object") {
-      if (typeof detail.error === "string" && detail.error.trim()) return detail.error;
-      if (typeof detail.message === "string" && detail.message.trim()) return detail.message;
-    }
-  } catch {
-    // noop
+  switch (response.status) {
+    case 400:
+      return "The request could not be completed.";
+    case 401:
+      return "Your session has expired. Please sign in again.";
+    case 403:
+      return "You are not allowed to perform this action.";
+    case 404:
+      return "The requested resource was not found.";
+    case 408:
+      return "The request timed out. Please try again.";
+    case 413:
+      return "The uploaded file is too large.";
+    case 429:
+      return "Too many requests. Please wait and try again.";
+    default:
+      return fallback;
   }
-  return fallback;
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -671,7 +677,7 @@ export default function WorkbenchClient() {
           }
         }
       } catch (err) {
-        console.error("Auth error:", err);
+        console.warn("Auth check failed; redirecting to login.");
         if (!active) return;
         setTimeout(() => {
           redirectToLogin();
