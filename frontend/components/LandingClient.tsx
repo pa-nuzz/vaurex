@@ -105,10 +105,10 @@ const STYLES = `
   .vx-btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: var(--text-1); }
 
   .vx-btn-primary {
-    background: var(--blue);
+    background: linear-gradient(135deg, var(--accent), #FF8A56);
     color: #fff;
   }
-  .vx-btn-primary:hover { background: #5a9cf8; }
+  .vx-btn-primary:hover { background: linear-gradient(135deg, #FF7A47, #FF9B6C); }
 
   /* Cards */
   .vx-card {
@@ -147,7 +147,7 @@ const STYLES = `
   /* Section heading pattern */
   .vx-overline {
     font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--blue);
+    text-transform: uppercase; color: var(--accent);
     margin-bottom: 12px;
   }
 
@@ -241,7 +241,7 @@ export default function LandingClient() {
         <div style={{
           position: "absolute", top: "5%", left: "50%", transform: "translateX(-50%)",
           width: 700, height: 400, borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(59,130,246,0.06) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse, rgba(255,107,53,0.11) 0%, rgba(59,130,246,0.06) 45%, transparent 72%)",
           pointerEvents: "none",
         }} />
 
@@ -252,7 +252,7 @@ export default function LandingClient() {
               {/* ── Copy ── */}
               <div>
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }} style={{ marginBottom: 22 }}>
-                  <span className="vx-pill vx-pill-blue"><Sparkles size={11} /> AI Document Intelligence</span>
+                  <span className="vx-pill vx-pill-orange"><Sparkles size={11} /> AI Document Intelligence</span>
                 </motion.div>
 
                 <motion.h1 className="font-display"
@@ -262,7 +262,7 @@ export default function LandingClient() {
                 >
                   Know exactly what&apos;s<br />
                   in your{" "}
-                  <span style={{ background: "linear-gradient(135deg, var(--blue) 0%, #60a5fa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>documents</span>
+                  <span style={{ background: "linear-gradient(135deg, var(--accent) 0%, #FF9A5C 55%, var(--blue) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>documents</span>
                 </motion.h1>
 
                 <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.22 }}
@@ -301,8 +301,8 @@ export default function LandingClient() {
                 {/* Card header */}
                 <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg-elevated)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--blue-dim)", border: "1px solid var(--blue-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <FileSearch size={14} color="var(--blue)" />
+                    <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-dim)", border: "1px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <FileSearch size={14} color="var(--accent)" />
                     </div>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Final Contract</div>
@@ -333,7 +333,7 @@ export default function LandingClient() {
                   <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Detected Entities</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {["Nexus Holdings Ltd", "$4.2M transfer", "James Crowley", "Offshore account"].map((e, i) => (
-                      <span key={i} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: i === 3 ? "rgba(239,68,68,0.08)" : "var(--blue-dim)", color: i === 3 ? "var(--danger)" : "var(--blue)", border: `1px solid ${i === 3 ? "rgba(239,68,68,0.22)" : "var(--blue-border)"}` }}>{e}</span>
+                      <span key={i} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: i === 3 ? "rgba(239,68,68,0.08)" : "var(--accent-dim)", color: i === 3 ? "var(--danger)" : "var(--accent)", border: `1px solid ${i === 3 ? "rgba(239,68,68,0.22)" : "var(--accent-border)"}` }}>{e}</span>
                     ))}
                   </div>
                 </div>
@@ -453,8 +453,8 @@ export default function LandingClient() {
               ].map((f, i) => (
                 <Fade key={i} delay={i * 0.08}>
                   <div className="vx-card vx-card-hover" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--blue-dim)", border: "1px solid var(--blue-border)" }}>
-                      <f.icon size={16} color="var(--blue)" />
+                    <div style={{ width: 38, height: 38, borderRadius: 9, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: i === 1 ? "var(--blue-dim)" : "var(--accent-dim)", border: `1px solid ${i === 1 ? "var(--blue-border)" : "var(--accent-border)"}` }}>
+                      <f.icon size={16} color={i === 1 ? "var(--blue)" : "var(--accent)"} />
                     </div>
                     <div>
                       <h4 className="font-display" style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{f.title}</h4>
@@ -481,8 +481,8 @@ export default function LandingClient() {
           {features.map((f, i) => (
             <Fade key={i} delay={i * 0.07}>
               <div className="vx-card vx-card-hover" style={{ height: "100%" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--blue-dim)", border: "1px solid var(--blue-border)" }}>
-                  <f.icon size={18} color="var(--blue)" />
+                <div style={{ width: 40, height: 40, borderRadius: 10, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", background: i % 2 === 0 ? "var(--accent-dim)" : "var(--blue-dim)", border: `1px solid ${i % 2 === 0 ? "var(--accent-border)" : "var(--blue-border)"}` }}>
+                  <f.icon size={18} color={i % 2 === 0 ? "var(--accent)" : "var(--blue)"} />
                 </div>
                 <h3 className="font-display" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 7 }}>{f.title}</h3>
                 <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.7 }}>{f.desc}</p>
@@ -569,7 +569,7 @@ export default function LandingClient() {
                       <plan.icon size={14} /> {plan.cta}
                     </a>
                   ) : (
-                    <Link href={plan.link} className="vx-btn" style={{ justifyContent: "center", padding: "11px", width: "100%", borderRadius: 9, background: plan.featured ? "var(--blue)" : "transparent", border: plan.featured ? "none" : "1px solid var(--border-md)", color: plan.featured ? "#fff" : "var(--text-2)" }}>
+                    <Link href={plan.link} className="vx-btn" style={{ justifyContent: "center", padding: "11px", width: "100%", borderRadius: 9, background: plan.featured ? "linear-gradient(135deg, var(--accent), #FF8A56)" : "transparent", border: plan.featured ? "none" : "1px solid var(--border-md)", color: plan.featured ? "#fff" : "var(--text-2)" }}>
                       <plan.icon size={14} /> {plan.cta}
                     </Link>
                   )}

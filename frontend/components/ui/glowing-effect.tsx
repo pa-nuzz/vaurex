@@ -1,155 +1,121 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { animate } from "framer-motion";
 
-interface GlowingEffectProps {
-  blur?: number;
-  inactiveZone?: number;
-  proximity?: number;
-  spread?: number;
-  variant?: "default" | "white";
-  glow?: boolean;
+type GlowingEffectProps = {
   className?: string;
+  blur?: number;
+  spread?: number;
+  glow?: boolean;
   disabled?: boolean;
-  movementDuration?: number;
+  proximity?: number;
+  inactiveZone?: number;
   borderWidth?: number;
-}
+};
 
-const GlowingEffect = memo(
-  ({
-    blur = 0,
-    inactiveZone = 0.7,
-    proximity = 0,
-    spread = 20,
-    variant = "default",
-    glow = false,
-    className,
-    movementDuration = 2,
-    borderWidth = 1,
-    disabled = false,
-  }: GlowingEffectProps) => {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const lastPosition = useRef({ x: 0, y: 0 });
-    const animationFrameRef = useRef<number>(0);
+export function GlowingEffect({
+  className,
+  blur = 0,
+  spread = 40,
+  glow = true,
+  disabled = false,
+  proximity = 64,
+  inactiveZone = 0.01,
+  borderWidth = 1,
+}: GlowingEffectProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
-    const handleMove = useCallback(
-      (e?: MouseEvent | { x: number; y: number }) => {
-        if (!containerRef.current) return;
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+  useEffect(() => {
+    if (disabled) return;
 
-        animationFrameRef.current = requestAnimationFrame(() => {
-          const element = containerRef.current;
-          if (!element) return;
+    const node = ref.current;
+    if (!node) return;
 
-          const { left, top, width, height } = element.getBoundingClientRect();
-          const mouseX = e?.x ?? lastPosition.current.x;
-          const mouseY = e?.y ?? lastPosition.current.y;
+    let active = 0;
 
-          if (e) lastPosition.current = { x: mouseX, y: mouseY };
+    const apply = (x: number, y: number) => {
+      const rect = node.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = x - cx;
+      const dy = y - cy;
+      const distance = Math.hypot(dx, dy);
 
-          const center = [left + width * 0.5, top + height * 0.5];
-          const distanceFromCenter = Math.hypot(mouseX - center[0], mouseY - center[1]);
-          const inactiveRadius = 0.5 * Math.min(width, height) * inactiveZone;
+      const maxDistance = Math.max(rect.width, rect.height) / 2 + proximity;
+      const intensity = distance <= maxDistance ? 1 : 0;
+      active = active + (intensity - active) * 0.15;
 
-          if (distanceFromCenter < inactiveRadius) {
-            element.style.setProperty("--active", "0");
-            return;
-          }
+      const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
 
-          const isActive =
-            mouseX > left - proximity &&
-            mouseX < left + width + proximity &&
-            mouseY > top - proximity &&
-            mouseY < top + height + proximity;
+      node.style.setProperty("--start", angle.toFixed(2));
+      node.style.setProperty("--active", active < inactiveZone ? "0" : active.toFixed(3));
+    };
 
-          element.style.setProperty("--active", isActive ? "1" : "0");
-          if (!isActive) return;
+    const onPointerMove = (event: PointerEvent) => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => apply(event.clientX, event.clientY));
+    };
 
-          const currentAngle = parseFloat(element.style.getPropertyValue("--start")) || 0;
-          let targetAngle =
-            (180 * Math.atan2(mouseY - center[1], mouseX - center[0])) / Math.PI + 90;
-          const angleDiff = ((targetAngle - currentAngle + 180) % 360) - 180;
-          const newAngle = currentAngle + angleDiff;
+    const onScroll = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const rect = node.getBoundingClientRect();
+        apply(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      });
+    };
 
-          animate(currentAngle, newAngle, {
-            duration: movementDuration,
-            ease: [0.16, 1, 0.3, 1],
-            onUpdate: (value) => {
-              element.style.setProperty("--start", String(value));
-            },
-          });
-        });
-      },
-      [inactiveZone, proximity, movementDuration]
-    );
+    document.body.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
 
-    useEffect(() => {
-      if (disabled) return;
-      const handleScroll = () => handleMove();
-      const handlePointerMove = (e: PointerEvent) => handleMove(e);
-      window.addEventListener("scroll", handleScroll, { passive: true });
-      document.body.addEventListener("pointermove", handlePointerMove, { passive: true });
-      return () => {
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        window.removeEventListener("scroll", handleScroll);
-        document.body.removeEventListener("pointermove", handlePointerMove);
-      };
-    }, [handleMove, disabled]);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      document.body.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [disabled, proximity, inactiveZone]);
 
-    return (
-      <>
+  return (
+    <>
+      <div
+        className={cn(
+          "pointer-events-none absolute -inset-px hidden rounded-[inherit] border opacity-0 transition-opacity",
+          glow && "opacity-100",
+        )}
+      />
+      <div
+        ref={ref}
+        style={{
+          ["--blur" as string]: `${blur}px`,
+          ["--spread" as string]: `${spread}`,
+          ["--start" as string]: "0",
+          ["--active" as string]: "0",
+          ["--glowingeffect-border-width" as string]: `${borderWidth}px`,
+          ["--gradient" as string]: "radial-gradient(circle, #FF6B35 10%, #FF6B3500 20%), radial-gradient(circle at 40% 40%, #3B82F6 5%, #3B82F600 15%), repeating-conic-gradient(from 236.84deg at 50% 50%, #FF6B35 0%, #3B82F6 25%, #06b6d4 50%, #10b981 75%, #FF6B35 100%)",
+        }}
+        className={cn(
+          "pointer-events-none absolute inset-0 rounded-[inherit] opacity-100 transition-opacity",
+          blur > 0 && "blur-[var(--blur)]",
+          disabled && "!hidden",
+          className,
+        )}
+      >
         <div
           className={cn(
-            "pointer-events-none absolute -inset-px hidden rounded-[inherit] border opacity-0 transition-opacity",
-            glow && "opacity-100",
-            variant === "white" && "border-white",
-            disabled && "!block"
+            "glow rounded-[inherit]",
+            'after:content-[""] after:rounded-[inherit] after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))]',
+            "after:[border:var(--glowingeffect-border-width)_solid_transparent]",
+            "after:[background:var(--gradient)] after:[background-attachment:fixed]",
+            "after:opacity-[var(--active)] after:transition-opacity after:duration-300",
+            "after:[mask-clip:padding-box,border-box]",
+            "after:[mask-composite:intersect]",
+            "after:[mask-image:linear-gradient(#0000,#0000),conic-gradient(from_calc((var(--start)-var(--spread))*1deg),#00000000_0deg,#fff,#00000000_calc(var(--spread)*2deg))]",
           )}
         />
-        <div
-          ref={containerRef}
-          style={
-            {
-              "--blur": `${blur}px`,
-              "--spread": spread,
-              "--start": "0",
-              "--active": "0",
-              "--glowingeffect-border-width": `${borderWidth}px`,
-              "--repeating-conic-gradient-times": "5",
-              "--gradient":
-                variant === "white"
-                  ? `repeating-conic-gradient(from 236.84deg at 50% 50%,var(--black),var(--black) calc(25%/var(--repeating-conic-gradient-times)))`
-                  : `radial-gradient(circle,#FF6B35 10%,#FF6B3500 20%),radial-gradient(circle at 40% 40%,#3B82F6 5%,#3B82F600 15%),radial-gradient(circle at 60% 60%,#06b6d4 10%,#06b6d400 20%),radial-gradient(circle at 40% 60%,#10b981 10%,#10b98100 20%),repeating-conic-gradient(from 236.84deg at 50% 50%,#FF6B35 0%,#3B82F6 calc(25%/var(--repeating-conic-gradient-times)),#06b6d4 calc(50%/var(--repeating-conic-gradient-times)),#10b981 calc(75%/var(--repeating-conic-gradient-times)),#FF6B35 calc(100%/var(--repeating-conic-gradient-times)))`,
-            } as React.CSSProperties
-          }
-          className={cn(
-            "pointer-events-none absolute inset-0 rounded-[inherit] opacity-100 transition-opacity",
-            glow && "opacity-100",
-            blur > 0 && "blur-[var(--blur)]",
-            className,
-            disabled && "!hidden"
-          )}
-        >
-          <div
-            className={cn(
-              "glow",
-              "rounded-[inherit]",
-              'after:content-[""] after:rounded-[inherit] after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))]',
-              "after:[border:var(--glowingeffect-border-width)_solid_transparent]",
-              "after:[background:var(--gradient)] after:[background-attachment:fixed]",
-              "after:opacity-[var(--active)] after:transition-opacity after:duration-300",
-              "after:[mask-clip:padding-box,border-box]",
-              "after:[mask-composite:intersect]",
-              "after:[mask-image:linear-gradient(#0000,#0000),conic-gradient(from_calc((var(--start)-var(--spread))*1deg),#00000000_0deg,#fff,#00000000_calc(var(--spread)*2deg))]"
-            )}
-          />
-        </div>
-      </>
-    );
-  }
-);
+      </div>
+    </>
+  );
+}
 
 GlowingEffect.displayName = "GlowingEffect";
-export { GlowingEffect };
