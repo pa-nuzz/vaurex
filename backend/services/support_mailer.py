@@ -44,3 +44,36 @@ def send_user_confirmation_email(recipient: str, request_id: str) -> None:
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
+
+
+def send_login_alert_email(
+    recipient: str,
+    *,
+    provider: str,
+    ip_address: str,
+    user_agent: str,
+) -> None:
+    if not is_support_email_enabled() or not recipient:
+        return
+
+    provider_name = provider.strip().lower() or "email"
+    readable_provider = "Google" if provider_name == "google" else "Email/Password"
+
+    msg = EmailMessage()
+    msg["Subject"] = "New login to your Vaurex account"
+    msg["From"] = SUPPORT_EMAIL
+    msg["To"] = recipient
+    msg.set_content(
+        "We detected a new login to your Vaurex account.\n\n"
+        f"Sign-in method: {readable_provider}\n"
+        f"IP address: {ip_address}\n"
+        f"Device: {user_agent[:180] if user_agent else 'Unknown device'}\n\n"
+        "If this was you, no action is needed.\n"
+        "If this wasn't you, reset your password immediately.\n\n"
+        "— Vaurex Security"
+    )
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)

@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { apiJson } from "@/lib/api";
 import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
 import { GoogleButton, AuthDivider } from "@/components/ui/OtpInput";
 
@@ -69,6 +70,19 @@ function LoginInner() {
       }
 
       await supabase.auth.getSession();
+      try {
+        await apiJson(
+          "/api/v1/auth/login-notification",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider: "email" }),
+          },
+          { auth: true, fallbackMessage: "Login notification failed." },
+        );
+      } catch {
+        // non-blocking
+      }
       router.push(next);
     } finally {
       setLoading(false);

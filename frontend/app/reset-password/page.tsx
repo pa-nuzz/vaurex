@@ -1,158 +1,126 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Mail } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { GoogleButton, AuthDivider } from "@/components/ui/OtpInput";
 
 export default function ResetPasswordPage() {
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const params = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
+
+  const [initializing, setInitializing] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [handleExchangeCode, setHandleExchangeCode] = useState<(() => Promise<void>) | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    
+    const code = params.get("code");
     if (!code) {
-      // No code parameter, redirect to forgot-password
-      window.location.href = '/forgot-password';
+      setInitializing(false);
+      setError("Reset link is invalid or expired. Request a new reset email.");
       return;
     }
 
-    const handleExchangeCode = async () => {
-      setLoading(true);
-      setError("");
-
-      const supabase = createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-      if (error) {
-        setError('Invalid or expired reset link. Please try again.');
-      } else {
-        // Show success state briefly before redirect
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 1500);
+    let active = true;
+    (async () => {
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (!active) return;
+      if (exchangeError) {
+        setError("Reset link is invalid or expired. Request a new reset email.");
       }
-      setLoading(false);
-    };
+      setInitializing(false);
+    })();
 
-    setHandleExchangeCode(() => handleExchangeCode);
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [params, supabase]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setSaving(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setSaving(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setSuccess(true);
+    setTimeout(() => router.push("/login"), 1500);
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
-      <div style={{ maxWidth: 440, margin: "0 auto", padding: "24px" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h1 style={{ 
-            fontSize: "clamp(32px, 4vw, 48px)", 
-            fontWeight: 800, 
-            color: "var(--text-primary)", 
-            marginBottom: 16,
-            letterSpacing: "-0.02em"
-          }}>
-            Set new password
-          </h1>
-          <p style={{ 
-            fontSize: 18, 
-            color: "var(--text-secondary)", 
-            lineHeight: 1.6,
-            maxWidth: 600,
-            margin: "0 auto"
-          }}>
-            Enter your new password to complete the reset process.
-          </p>
-        </div>
+    <div style={{ minHeight: "100vh", background: "var(--bg-base)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ width: "100%", maxWidth: 460, background: "var(--bg-surface)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.02em" }}>
+          Set a new password
+        </h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+          Use your reset link to securely set a new password.
+        </p>
 
-        <AuthDivider />
-
-        {/* Exchange code form */}
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          handleExchangeCode?.();
-        }}>
-          <div style={{
-            background: "var(--bg-surface)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: 16,
-            padding: 32,
-            display: "flex",
-            gap: 24,
-            alignItems: "flex-start"
-          }}>
-            <div style={{
-              width: 56,
-              height: 56,
-              borderRadius: 12,
-              background: "var(--accent-dim)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0
-            }}>
-              <Mail size={24} color="var(--accent)" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
-                Exchange code received
-              </h3>
-              <p style={{ fontSize: 16, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
-                Check your email for a reset code and enter it above.
-              </p>
-            </div>
+        {error && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 12, borderRadius: 10, border: "1px solid rgba(239,68,68,0.2)", background: "rgba(239,68,68,0.1)", color: "var(--danger)", fontSize: 13, marginBottom: 14 }}>
+            <AlertCircle size={15} /> {error}
           </div>
+        )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "12px 24px",
-              background: "var(--accent)",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              transition: "all 0.15s"
-            }}
-          >
-            {loading ? 'Exchanging code...' : 'Exchange code'}
-          </button>
-          {error && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: 12,
-                borderRadius: 8,
-                marginBottom: 20,
-                background: "rgba(239,68,68,0.1)",
-                border: "1px solid rgba(239,68,68,0.2)",
-                color: "var(--danger)",
-                fontSize: 14,
-              }}
+        {success ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: 12, borderRadius: 10, border: "1px solid rgba(16,185,129,0.25)", background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontSize: 13 }}>
+            <CheckCircle size={15} color="var(--success)" /> Password updated. Redirecting to login...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12, opacity: initializing ? 0.7 : 1 }}>
+            <input
+              type="password"
+              required
+              disabled={initializing || saving}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="New password"
+              style={{ width: "100%", background: "var(--bg-elevated)", border: "1px solid var(--border-primary)", borderRadius: 10, color: "var(--text-primary)", padding: "11px 12px", fontSize: 14, outline: "none" }}
+            />
+            <input
+              type="password"
+              required
+              disabled={initializing || saving}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
+              style={{ width: "100%", background: "var(--bg-elevated)", border: "1px solid var(--border-primary)", borderRadius: 10, color: "var(--text-primary)", padding: "11px 12px", fontSize: 14, outline: "none" }}
+            />
+
+            <button
+              type="submit"
+              disabled={initializing || saving}
+              style={{ width: "100%", background: "var(--accent-orange)", color: "white", border: "none", borderRadius: 10, padding: "11px 14px", fontSize: 14, fontWeight: 700, cursor: initializing || saving ? "not-allowed" : "pointer", opacity: initializing || saving ? 0.7 : 1 }}
             >
-              <Mail size={15} style={{ flexShrink: 0 }} />
-              {error}
-            </div>
-          )}
-        </form>
+              {initializing ? "Verifying link..." : saving ? "Updating..." : "Update password"}
+            </button>
+          </form>
+        )}
 
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <Link href="/forgot-password" style={{ color: "var(--text-3)", fontSize: 14 }}>
-            Request new reset code
-          </Link>
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <Link href="/login" style={{ color: "var(--text-3)", fontSize: 14 }}>
-            Back to login
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <Link href="/forgot-password" style={{ color: "var(--text-muted)", fontSize: 13 }}>
+            Request another reset email
           </Link>
         </div>
       </div>

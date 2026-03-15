@@ -32,6 +32,27 @@ export async function GET(request: NextRequest) {
         loginUrl.searchParams.set("message", exchangeError.message);
         return NextResponse.redirect(loginUrl);
       }
+
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        if (accessToken) {
+          const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000").replace(/\/+$/, "");
+          await fetch(`${backendBase}/api/v1/auth/login-notification`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ provider: "google" }),
+            cache: "no-store",
+          });
+        }
+      } catch (notifyError) {
+        console.warn("Login notification failed:", notifyError);
+      }
       
       // Successfully authenticated - redirect to intended destination
       console.log("Authentication successful, redirecting to:", next);

@@ -26,6 +26,7 @@ from routes.chat import router as chat_router
 from routes.quota import router as quota_router
 from routes.knowledge_base import router as kb_router
 from routes.compliance import router as compliance_router
+from routes.auth_events import router as auth_events_router
 from services.rate_limiter import GLOBAL_RATE_LIMITER, PERSISTENT_GUEST_RATE_LIMITER
 from services.job_queue import start_job_worker, stop_job_worker
 from services.security import request_fingerprint, request_ip
@@ -317,6 +318,7 @@ app.include_router(kb_router, prefix=API_V1_PREFIX)
 app.include_router(compliance_router, prefix=API_V1_PREFIX)
 app.include_router(support_agent_router, prefix=API_V1_PREFIX)
 app.include_router(quota_router, prefix=API_V1_PREFIX)
+app.include_router(auth_events_router, prefix=API_V1_PREFIX)
 
 # Legacy compatibility aliases for existing clients and tests.
 @app.post("/upload", include_in_schema=False)
