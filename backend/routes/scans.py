@@ -9,8 +9,8 @@ from services.security import verify_ownership
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-SCAN_SELECT_FIELDS = "id,filename,status,risk_score,risk_label,summary,entities,flags,error_message,created_at"
-SCAN_DOWNLOAD_FIELDS = SCAN_SELECT_FIELDS + ",raw_text,clean_text"
+SCAN_SELECT_FIELDS = "id,filename,status,risk_score,risk_label,summary,entities,flags,error_message,clean_text,created_at"
+SCAN_DOWNLOAD_FIELDS = SCAN_SELECT_FIELDS + ",raw_text"
 
 
 def _normalize_scan(scan: dict) -> dict:
@@ -29,6 +29,7 @@ def _normalize_scan(scan: dict) -> dict:
         "entities": scan.get("entities", []),
         "flags": scan.get("flags", []),
         "error_message": scan.get("error_message"),
+        "clean_text": scan.get("clean_text") or scan.get("raw_text") or "",
         "created_at": scan.get("created_at"),
     }
 

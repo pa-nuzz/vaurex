@@ -15,11 +15,18 @@ import {
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 interface Entity { type: string; value: string; context?: string; }
+interface FlagObject {
+  severity?: "low" | "medium" | "high" | "critical";
+  quote?: string;
+  explanation?: string;
+  action?: string;
+}
 interface ScanResult {
   id: string; filename: string;
   status: "processing" | "done" | "error" | "failed" | "failure";
   risk_score?: number; risk_label?: string; summary?: string;
-  entities?: Entity[]; flags?: string[]; error_message?: string; created_at: string;
+  entities?: Entity[]; flags?: (string | FlagObject)[]; error_message?: string;
+  clean_text?: string; created_at: string;
 }
 interface ChatMessage { role: "user" | "assistant"; content: string; }
 interface UserProfile { id: string; email: string; name: string; avatar?: string; plan: "free" | "pro" | "pro_max"; }
@@ -140,26 +147,91 @@ function RiskGauge({ score }: { score: number }) {
 function EntityGroup({ entities }: { entities: Entity[] }) {
   const grouped: Record<string, Entity[]> = {};
   entities.forEach(e => { (grouped[e.type] ||= []).push(e); });
-  const colors: Record<string, string> = { PERSON: "#FF6B35", ORG: "#3B82F6", DATE: "#059669", MONEY: "#D97706", LOCATION: "#DB2777", LAW: "#DC2626", MISC: "#6B7280" };
+  const colors: Record<string, string> = {
+    PERSON: "#FF6B35", ORGANIZATION: "#3B82F6", ORG: "#3B82F6",
+    DATE: "#059669", MONEY: "#D97706", AMOUNT: "#D97706",
+    LOCATION: "#DB2777", EMAIL: "#8B5CF6", PHONE: "#0EA5E9",
+    TECHNOLOGY: "#06B6D4", CONTRACT_TERM: "#F59E0B",
+    JURISDICTION: "#6366F1", LAW: "#DC2626", MISC: "#6B7280",
+  };
+  const typeIcons: Record<string, string> = {
+    PERSON: "👤", ORGANIZATION: "🏢", ORG: "🏢", DATE: "📅",
+    MONEY: "💰", AMOUNT: "💰", LOCATION: "📍", EMAIL: "✉️",
+    PHONE: "📞", TECHNOLOGY: "⚙️", CONTRACT_TERM: "📄",
+    JURISDICTION: "⚖️", LAW: "⚖️", MISC: "🔹",
+  };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {Object.entries(grouped).map(([type, items]) => {
         const col = colors[type] || "#6B7280";
         return (
           <div key={type}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: col }} />
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: col }}>{type}</span>
-              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({items.length})</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 14 }}>{typeIcons[type] || "🔹"}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: col }}>{type.replace("_", " ")}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 2 }}>({items.length})</span>
+              <div style={{ flex: 1, height: 1, background: `${col}20`, marginLeft: 4 }} />
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {items.map((e, i) => <span key={i} style={{ fontSize: 12, fontWeight: 500, padding: "3px 10px", borderRadius: 20, background: `${col}15`, color: col, border: `1px solid ${col}30` }}>{e.value}</span>)}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+              {items.map((e, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", padding: "5px 12px", borderRadius: 10, background: `${col}10`, border: `1px solid ${col}28` }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: col }}>{e.value}</span>
+                  {e.context && <span style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.context}</span>}
+                </div>
+              ))}
             </div>
           </div>
         );
       })}
     </div>
   );
+}
+
+/* ─── Markdown renderer for AI chat responses ────────────────────────────── */
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^#{1,3}\s/.test(line)) {
+      const content = line.replace(/^#{1,3}\s/, "");
+      elements.push(<div key={i} style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, marginTop: i > 0 ? 10 : 0 }}>{inlineFormat(content)}</div>);
+    } else if (/^[-*•]\s/.test(line)) {
+      const bullet = line.replace(/^[-*•]\s/, "");
+      elements.push(
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 3 }}>
+          <span style={{ color: "var(--accent-primary)", marginTop: 2, flexShrink: 0, fontSize: 10 }}>●</span>
+          <span style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text-secondary)" }}>{inlineFormat(bullet)}</span>
+        </div>
+      );
+    } else if (/^\d+\.\s/.test(line)) {
+      const num = line.match(/^(\d+)\./)?.[1] || "";
+      const content = line.replace(/^\d+\.\s/, "");
+      elements.push(
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 3 }}>
+          <span style={{ color: "var(--accent-primary)", fontWeight: 700, fontSize: 11, flexShrink: 0, minWidth: 18 }}>{num}.</span>
+          <span style={{ fontSize: 13, lineHeight: 1.65, color: "var(--text-secondary)" }}>{inlineFormat(content)}</span>
+        </div>
+      );
+    } else if (line.trim() === "") {
+      if (elements.length > 0) elements.push(<div key={i} style={{ height: 6 }} />);
+    } else {
+      elements.push(<p key={i} style={{ fontSize: 13, lineHeight: 1.72, color: "var(--text-secondary)", margin: 0 }}>{inlineFormat(line)}</p>);
+    }
+    i++;
+  }
+  return <>{elements}</>;
+}
+
+function inlineFormat(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i} style={{ color: "var(--text-primary)", fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("`") && part.endsWith("`")) return <code key={i} style={{ fontSize: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "1px 5px", color: "var(--accent-primary)", fontFamily: "monospace" }}>{part.slice(1, -1)}</code>;
+    if (part.startsWith("*") && part.endsWith("*")) return <em key={i} style={{ color: "var(--text-muted)", fontStyle: "italic" }}>{part.slice(1, -1)}</em>;
+    return part;
+  });
 }
 
 /* ─── Upgrade Modal ──────────────────────────────────────────────────────── */
@@ -204,76 +276,225 @@ function UpgradeModal({ onClose, limitType }: { onClose: () => void; limitType: 
 }
 
 /* ─── Scan Results ────────────────────────────────────────────────────────── */
-function ScanReport({ result, onDownload, downloading, onReset }: {
-  result: ScanResult; onDownload: (f: "json" | "text") => void;
+function ScanReport({ result, onDownloadText, downloading, onReset }: {
+  result: ScanResult; onDownloadText: () => void;
   downloading: boolean; onReset: () => void;
 }) {
+  const [showExtracted, setShowExtracted] = useState(false);
   const score = result.risk_score ?? 0;
+  const color = riskColor(score);
+  const severityColors: Record<string, string> = { low: "#10B981", medium: "#F59E0B", high: "#EF4444", critical: "#DC2626" };
+
+  function downloadPdf() {
+    const ents = result.entities || [];
+    const entityRows = ents.map(e => `<tr><td style="padding:6px 12px;border-bottom:1px solid #2a2a2e;color:#9ca3af;font-size:12px">${e.type}</td><td style="padding:6px 12px;border-bottom:1px solid #2a2a2e;color:#f4f4f5;font-size:12px;font-weight:600">${e.value}</td><td style="padding:6px 12px;border-bottom:1px solid #2a2a2e;color:#71717a;font-size:11px">${e.context || ""}</td></tr>`).join("");
+    const flagRows = (result.flags || []).map((f, idx) => {
+      const fo = typeof f === "object" ? f as FlagObject : null;
+      const sevColor = fo?.severity ? severityColors[fo.severity] || "#EF4444" : "#EF4444";
+      return fo
+        ? `<div style="margin-bottom:14px;padding:14px 18px;border-radius:10px;background:rgba(239,68,68,0.05);border-left:3px solid ${sevColor}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${sevColor};background:${sevColor}18;padding:2px 8px;border-radius:99px">${fo.severity || "flag"}</span>
+            </div>
+            ${fo.quote ? `<p style="font-size:12px;color:#a1a1aa;font-style:italic;margin:0 0 6px">"${fo.quote}"</p>` : ""}
+            ${fo.explanation ? `<p style="font-size:13px;color:#d4d4d8;margin:0 0 6px">${fo.explanation}</p>` : ""}
+            ${fo.action ? `<p style="font-size:12px;color:#9ca3af;margin:0"><strong style="color:#f4f4f5">Action:</strong> ${fo.action}</p>` : ""}
+          </div>`
+        : `<div style="margin-bottom:8px;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,0.05);border-left:3px solid #EF4444"><p style="font-size:13px;color:#d4d4d8;margin:0">${f}</p></div>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vaurex Report — ${result.filename}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#09090b;color:#f4f4f5;padding:48px 56px;line-height:1.6}
+  h1{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px}
+  h2{font-size:15px;font-weight:700;letter-spacing:-0.01em;margin-bottom:12px}
+  .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#71717a}
+  .card{background:#18181b;border:1px solid #27272a;border-radius:14px;padding:22px 24px;margin-bottom:20px}
+  .score{font-size:56px;font-weight:800;letter-spacing:-0.03em;line-height:1}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th{text-align:left;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#71717a;border-bottom:1px solid #27272a}
+  .footer{margin-top:40px;padding-top:20px;border-top:1px solid #27272a;display:flex;justify-content:space-between;align-items:center}
+  @media print{body{padding:24px 32px}@page{margin:16mm 12mm}}
+</style></head><body>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
+  <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FF6B35,#FF8C42);display:flex;align-items:center;justify-content:center;font-size:18px">✦</div>
+  <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#71717a;margin-bottom:2px">Vaurex AI Intelligence Report</div><h1>${result.filename}</h1></div>
+  <div style="margin-left:auto;text-align:right"><div class="label">Analyzed</div><div style="font-size:13px;color:#a1a1aa">${formatDate(result.created_at)}</div></div>
+</div>
+<div style="display:grid;grid-template-columns:180px 1fr;gap:16px;margin-bottom:20px">
+  <div class="card" style="text-align:center;background:${riskBg(score)};border-color:${color}30">
+    <div class="label" style="margin-bottom:12px">Risk Score</div>
+    <div class="score" style="color:${color}">${score}</div>
+    <div style="margin-top:10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${color}">${result.risk_label || riskLabel(score)} Risk</div>
+  </div>
+  <div class="card">
+    <h2>Executive Summary</h2>
+    <p style="font-size:14px;color:#a1a1aa;line-height:1.8">${result.summary || "No summary available."}</p>
+  </div>
+</div>
+${ents.length > 0 ? `<div class="card"><h2>Extracted Entities (${ents.length})</h2><table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>${entityRows}</tbody></table></div>` : ""}
+${result.flags?.length ? `<div class="card" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.03)"><h2>Risk Flags (${result.flags.length})</h2>${flagRows}</div>` : ""}
+${result.clean_text ? `<div class="card"><h2>Extracted Text</h2><pre style="font-size:11px;color:#71717a;white-space:pre-wrap;line-height:1.7;max-height:400px;overflow:hidden">${result.clean_text.slice(0, 3000)}${result.clean_text.length > 3000 ? "\n… (truncated)" : ""}</pre></div>` : ""}
+<div class="footer"><div style="font-size:12px;color:#52525b">Generated by Vaurex AI · ${new Date().toLocaleDateString()}</div><div style="font-size:11px;color:#52525b">Confidential — Do not distribute</div></div>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => { w.focus(); w.print(); };
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Header */}
-      <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <CheckCircle size={14} color="var(--pro)" />
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Analysis Complete</span>
+      {/* ── Report header banner ── */}
+      <div style={{
+        background: `linear-gradient(135deg, ${riskBg(score)}, var(--bg-secondary))`,
+        border: `1px solid ${color}30`,
+        borderRadius: 20, padding: "20px 24px",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: riskBg(score), border: `1.5px solid ${color}40`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CheckCircle size={22} color={color} />
           </div>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{result.filename}</h2>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Analyzed {formatDate(result.created_at)}</p>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Analysis Complete</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}18`, border: `1px solid ${color}30`, padding: "1px 8px", borderRadius: 99, textTransform: "uppercase", letterSpacing: "0.06em" }}>{result.risk_label || riskLabel(score)} Risk</span>
+            </div>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{result.filename}</h2>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Analyzed {formatDate(result.created_at)}</p>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => onDownload("json")} disabled={downloading} className="btn-ghost" style={{ padding: "7px 12px", fontSize: 12, borderRadius: 8, border: "1px solid var(--border-primary)" }}><Download size={12} /> JSON</button>
-          <button onClick={() => onDownload("text")} disabled={downloading} className="btn-ghost" style={{ padding: "7px 12px", fontSize: 12, borderRadius: 8, border: "1px solid var(--border-primary)" }}><FileText size={12} /> Text</button>
-          <button onClick={onReset} className="btn-primary" style={{ padding: "7px 14px", fontSize: 12, borderRadius: 8 }}><Upload size={12} /> New Scan</button>
+          <button onClick={downloadPdf} className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, borderRadius: 10, border: "1px solid var(--border-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+            <Download size={13} /> Download PDF
+          </button>
+          <button onClick={onDownloadText} disabled={downloading} className="btn-ghost" style={{ padding: "8px 14px", fontSize: 12, borderRadius: 10, border: "1px solid var(--border-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+            <FileText size={13} /> Raw Text
+          </button>
+          <button onClick={onReset} className="btn-primary" style={{ padding: "8px 16px", fontSize: 12, borderRadius: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <Upload size={13} /> New Scan
+          </button>
         </div>
       </div>
 
-      {/* Risk + Summary grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }} className="report-top">
-        <div style={{ background: riskBg(score), border: `1px solid ${riskColor(score)}25`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      {/* ── Risk score + summary ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 16 }} className="report-top">
+        <div style={{ background: riskBg(score), border: `1px solid ${color}25`, borderRadius: 18, padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <RiskGauge score={score} />
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: riskColor(score) }}>
-            {result.risk_label || riskLabel(score)} Risk
-          </span>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color }}>
+              {result.risk_label || riskLabel(score)} Risk
+            </div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>out of 100</div>
+          </div>
+          <div style={{ width: "100%", height: 5, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${score}%`, background: `linear-gradient(90deg, ${color}80, ${color})`, borderRadius: 99, transition: "width 1.2s ease" }} />
+          </div>
         </div>
-        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <BarChart3 size={14} color="var(--accent-primary)" />
+
+        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 18, padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <BarChart3 size={15} color="var(--accent-primary)" />
+            </div>
             <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Executive Summary</h3>
           </div>
           <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.85, whiteSpace: "pre-wrap" }}>{result.summary || "No summary available."}</p>
         </div>
       </div>
 
-      {/* Entities */}
+      {/* ── Entities ── */}
       {result.entities && result.entities.length > 0 && (
-        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <Users size={14} color="var(--accent-primary)" />
+        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 18, padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Users size={15} color="var(--accent-primary)" />
+            </div>
             <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Extracted Entities</h3>
-            <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 2 }}>({result.entities.length})</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-primary)", background: "var(--accent-surface)", border: "1px solid var(--accent-border)", padding: "1px 8px", borderRadius: 99 }}>{result.entities.length}</span>
           </div>
           <EntityGroup entities={result.entities} />
         </div>
       )}
 
-      {/* Risk Flags */}
+      {/* ── Risk Flags ── */}
       {result.flags && result.flags.length > 0 && (
-        <div style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: 16, padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <Shield size={14} color="#EF4444" />
+        <div style={{ background: "rgba(239,68,68,0.03)", border: "1px solid rgba(239,68,68,0.14)", borderRadius: 18, padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(239,68,68,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Shield size={15} color="#EF4444" />
+            </div>
             <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Risk Flags</h3>
-            <span style={{ fontSize: 11, color: "#EF4444", marginLeft: 2 }}>({result.flags.length})</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#EF4444", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", padding: "1px 8px", borderRadius: 99 }}>{result.flags.length}</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {result.flags.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 10, background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)" }}>
-                <AlertTriangle size={13} color="#EF4444" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{typeof f === "string" ? f : JSON.stringify(f)}</span>
-              </div>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {result.flags.map((f, i) => {
+              if (typeof f === "object" && f !== null) {
+                const fo = f as FlagObject;
+                const sevColor = fo.severity ? severityColors[fo.severity] || "#EF4444" : "#EF4444";
+                return (
+                  <div key={i} style={{ borderRadius: 12, border: `1px solid ${sevColor}20`, background: `${sevColor}05`, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 16px", borderBottom: `1px solid ${sevColor}15`, display: "flex", alignItems: "center", gap: 8 }}>
+                      <AlertTriangle size={13} color={sevColor} />
+                      {fo.severity && <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: sevColor, background: `${sevColor}18`, padding: "2px 8px", borderRadius: 99 }}>{fo.severity}</span>}
+                    </div>
+                    <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {fo.quote && <blockquote style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", borderLeft: `2px solid ${sevColor}60`, paddingLeft: 10, marginLeft: 0 }}>&ldquo;{fo.quote}&rdquo;</blockquote>}
+                      {fo.explanation && <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{fo.explanation}</p>}
+                      {fo.action && <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", flexShrink: 0, marginTop: 2 }}>Action</span>
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>{fo.action}</span>
+                      </div>}
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 16px", borderRadius: 10, background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)" }}>
+                  <AlertTriangle size={13} color="#EF4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{String(f)}</span>
+                </div>
+              );
+            })}
           </div>
+        </div>
+      )}
+
+      {/* ── Extracted Contents ── */}
+      {result.clean_text && result.clean_text.trim().length > 10 && (
+        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 18, overflow: "hidden" }}>
+          <button
+            onClick={() => setShowExtracted(v => !v)}
+            style={{ width: "100%", padding: "16px 24px", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: showExtracted ? "1px solid var(--border-primary)" : "none" }}
+          >
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(99,102,241,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <FileSearch size={15} color="#6366F1" />
+            </div>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", flex: 1, textAlign: "left" }}>Extracted Contents</h3>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{result.clean_text.trim().split(/\s+/).length.toLocaleString()} words</span>
+            <ChevronRight size={14} color="var(--text-muted)" style={{ transform: showExtracted ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+          </button>
+          {showExtracted && (
+            <div style={{ padding: 24 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 12 }}>
+                Raw OCR / AI-extracted text from the document
+              </p>
+              <pre style={{
+                fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.8,
+                whiteSpace: "pre-wrap", wordBreak: "break-word",
+                background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-primary)",
+                borderRadius: 10, padding: "16px 18px", maxHeight: 480, overflowY: "auto",
+                fontFamily: "'SF Mono', 'Fira Code', monospace",
+              }}>
+                {result.clean_text.trim()}
+              </pre>
+            </div>
+          )}
         </div>
       )}
 
@@ -1125,7 +1346,7 @@ export default function WorkbenchClient() {
               )}
 
               {result && result.status === "done" && (
-                <ScanReport result={result} onDownload={downloadReport} downloading={downloading} onReset={() => { setResult(null); setFile(null); setScanId(null); }} />
+                <ScanReport result={result} onDownloadText={() => downloadReport("text")} downloading={downloading} onReset={() => { setResult(null); setFile(null); setScanId(null); }} />
               )}
 
               {result && ["error", "failed", "failure"].includes(result.status) && (
@@ -1200,36 +1421,81 @@ export default function WorkbenchClient() {
 
           {/* ── CHAT VIEW ── */}
           {activeView === "chat" && (
-            <div style={{ maxWidth: 720, margin: "0 auto", height: "calc(100vh - 56px - 48px)" }}>
-              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-primary)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <div>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>AI Chat</h3>
-                    <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      {isPro ? "Unlimited chats on Pro" : `${Math.max(0, FREE_CHAT_LIMIT - dailyChatUsed)} free chats left today`}
-                    </p>
+            <div style={{ maxWidth: 760, margin: "0 auto", height: "calc(100vh - 56px - 48px)" }}>
+              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 18, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                {/* Chat header */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "rgba(255,255,255,0.01)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, var(--accent-primary), var(--blue))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Sparkles size={16} color="white" fill="white" />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>Vaurex AI</h3>
+                      <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
+                        {isPro ? "Unlimited · Pro" : `${Math.max(0, FREE_CHAT_LIMIT - dailyChatUsed)} free chats left today`}
+                      </p>
+                    </div>
                   </div>
                   {!isPro && (
-                    <button onClick={() => setShowUpgrade({ type: "chat" })} style={{ padding: "6px 10px", borderRadius: 99, border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.1)", color: "#F59E0B", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                    <button onClick={() => setShowUpgrade({ type: "chat" })} style={{ padding: "6px 12px", borderRadius: 99, border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.1)", color: "#F59E0B", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
                       <Crown size={12} /> Upgrade
                     </button>
                   )}
                 </div>
 
-                <div ref={chatScrollRef} style={{ flex: 1, overflow: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {/* Messages */}
+                <div ref={chatScrollRef} style={{ flex: 1, overflow: "auto", padding: "20px 16px", display: "flex", flexDirection: "column", gap: 16 }}>
                   {chatMessages.map((message, index) => (
-                    <div key={`${message.role}-${index}`} style={{ alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "84%", padding: "10px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, background: message.role === "user" ? "var(--blue-dim)" : "rgba(255,255,255,0.04)", border: message.role === "user" ? "1px solid var(--blue-border)" : "1px solid var(--border-primary)", color: message.role === "user" ? "var(--text-primary)" : "var(--text-secondary)" }}>
-                      {message.content}
+                    <div key={`${message.role}-${index}`} style={{ display: "flex", flexDirection: "column", alignItems: message.role === "user" ? "flex-end" : "flex-start", gap: 4 }}>
+                      {message.role === "assistant" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: 6, background: "linear-gradient(135deg, var(--accent-primary), var(--blue))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Sparkles size={10} color="white" fill="white" />
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>Vaurex AI</span>
+                        </div>
+                      )}
+                      <div style={{
+                        maxWidth: "82%",
+                        padding: message.role === "user" ? "10px 16px" : "14px 18px",
+                        borderRadius: message.role === "user" ? "18px 18px 6px 18px" : "6px 18px 18px 18px",
+                        background: message.role === "user"
+                          ? "linear-gradient(135deg, var(--blue-dim), rgba(59,130,246,0.12))"
+                          : "var(--bg-primary)",
+                        border: message.role === "user"
+                          ? "1px solid var(--blue-border)"
+                          : "1px solid var(--border-primary)",
+                        boxShadow: message.role === "assistant" ? "0 2px 12px rgba(0,0,0,0.2)" : "none",
+                      }}>
+                        {message.role === "user"
+                          ? <span style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text-primary)" }}>{message.content}</span>
+                          : <div style={{ fontSize: 13, lineHeight: 1.72, color: "var(--text-secondary)" }}>{renderMarkdown(message.content)}</div>
+                        }
+                      </div>
                     </div>
                   ))}
+
                   {chatSending && (
-                    <div style={{ alignSelf: "flex-start", padding: "10px 12px", borderRadius: 12, border: "1px solid var(--border-primary)", background: "rgba(255,255,255,0.04)", color: "var(--text-muted)", fontSize: 13 }}>
-                      Assistant is typing...
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 6, background: "linear-gradient(135deg, var(--accent-primary), var(--blue))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Sparkles size={10} color="white" fill="white" />
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>Vaurex AI</span>
+                      </div>
+                      <div style={{ padding: "12px 16px", borderRadius: "6px 18px 18px 18px", border: "1px solid var(--border-primary)", background: "var(--bg-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          {[0, 1, 2].map(j => (
+                            <div key={j} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-primary)", animation: `typingDot 1.2s ease ${j * 0.2}s infinite` }} />
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div style={{ padding: 12, borderTop: "1px solid var(--border-primary)", display: "flex", gap: 8 }}>
+                {/* Input bar */}
+                <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border-primary)", display: "flex", gap: 8, alignItems: "flex-end" }}>
                   <input
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
@@ -1239,11 +1505,17 @@ export default function WorkbenchClient() {
                         void handleSendChat();
                       }
                     }}
-                    placeholder="Ask about findings, entities, or risk interpretation..."
-                    style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: 10, color: "var(--text-primary)", padding: "10px 12px", fontSize: 13, outline: "none" }}
+                    placeholder="Ask about findings, entities, or risk interpretation…"
+                    style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: 12, color: "var(--text-primary)", padding: "11px 14px", fontSize: 13, outline: "none", transition: "border-color 0.15s" }}
+                    onFocus={e => (e.target.style.borderColor = "var(--accent-primary)")}
+                    onBlur={e => (e.target.style.borderColor = "var(--border-primary)")}
                   />
-                  <button onClick={() => void handleSendChat()} disabled={chatSending || !chatInput.trim()} className="btn-primary" style={{ padding: "10px 14px", borderRadius: 10, opacity: chatSending || !chatInput.trim() ? 0.65 : 1 }}>
-                    <Send size={14} />
+                  <button
+                    onClick={() => void handleSendChat()}
+                    disabled={chatSending || !chatInput.trim()}
+                    style={{ width: 42, height: 42, borderRadius: 12, border: "none", cursor: chatSending || !chatInput.trim() ? "not-allowed" : "pointer", background: chatSending || !chatInput.trim() ? "var(--bg-elevated)" : "linear-gradient(135deg, var(--accent-primary), #FF8C42)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+                  >
+                    <Send size={15} color={chatSending || !chatInput.trim() ? "var(--text-muted)" : "white"} />
                   </button>
                 </div>
               </div>
@@ -1255,6 +1527,7 @@ export default function WorkbenchClient() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulseRing { 0%{box-shadow:0 0 0 0 rgba(255,90,31,0.4)} 70%{box-shadow:0 0 0 16px rgba(255,90,31,0)} 100%{box-shadow:0 0 0 0 rgba(255,90,31,0)} }
+        @keyframes typingDot { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-4px);opacity:1} }
         @media(max-width:900px) { .scan-intro-grid { grid-template-columns: 1fr !important; } }
         @media(max-width:640px) {
           aside { display: none; }
