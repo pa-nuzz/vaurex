@@ -129,7 +129,7 @@ export default function SupportPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "24px 24px 80px" }}>
+    <div className="support-shell" style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "24px 24px 80px" }}>
       {/* Ambient glow */}
       <div style={{ position: "fixed", top: "-10%", left: "-10%", width: "40vw", height: "40vw", borderRadius: "50%", background: "rgba(255,90,31,0.04)", filter: "blur(100px)", pointerEvents: "none" }} />
 
@@ -149,7 +149,7 @@ export default function SupportPage() {
           <p style={{ fontSize: 15, color: "var(--text-secondary)", maxWidth: 520 }}>
             Browse our FAQ, explore quick links, or send us a message. We typically respond within 24 hours.
           </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
+          <div className="support-indicators" style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}>
             {serviceIndicators.map((item) => (
               <div
                 key={item.label}
@@ -169,7 +169,7 @@ export default function SupportPage() {
         </div>
 
         {/* Quick links */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 48 }}>
+        <div className="support-quick-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 48 }}>
           {quickLinks.map((l, i) => (
             <a
               key={i}
@@ -205,7 +205,7 @@ export default function SupportPage() {
           </div>
 
           {/* Contact form */}
-          <div style={{ position: "sticky", top: 24 }}>
+          <div className="support-sticky-column" style={{ position: "sticky", top: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ background: "linear-gradient(180deg, rgba(255,90,31,0.08), rgba(255,255,255,0.02))", border: "1px solid var(--accent-border)", borderRadius: 20, padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -297,7 +297,17 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <style>{`@media(max-width:768px){.support-grid{grid-template-columns:1fr !important}}`}</style>
+      <style>{`
+        @media(max-width:960px){
+          .support-grid{grid-template-columns:1fr !important}
+          .support-sticky-column{position:static !important}
+        }
+        @media(max-width:768px){
+          .support-shell{padding:16px 14px 56px !important}
+          .support-quick-grid{grid-template-columns:1fr !important}
+          .support-indicators{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px !important}
+        }
+      `}</style>
     </div>
   );
 }

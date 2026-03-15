@@ -152,7 +152,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "24px 24px 80px" }}>
+    <div className="settings-shell" style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "24px 24px 80px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <Link href="/workbench" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-muted)", marginBottom: 28, fontSize: 14, textDecoration: "none" }}>
           <ArrowLeft size={15} /> Back to Workbench
@@ -164,7 +164,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border-primary)", marginBottom: 28 }}>
+        <div className="settings-tabs" style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border-primary)", marginBottom: 28 }}>
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
               display: "flex", alignItems: "center", gap: 8, padding: "12px 20px", fontSize: 14, fontWeight: 600,
@@ -349,7 +349,14 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media(max-width:768px){
+          .settings-shell{padding:16px 14px 56px !important}
+          .settings-tabs{overflow-x:auto;white-space:nowrap;scrollbar-width:none;-ms-overflow-style:none}
+          .settings-tabs::-webkit-scrollbar{display:none}
+        }
+      `}</style>
     </div>
   );
 }

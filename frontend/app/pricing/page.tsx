@@ -90,7 +90,7 @@ export default function PricingPage() {
   }, [supabase]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "32px 24px 80px", position: "relative", overflow: "hidden" }}>
+    <div className="pricing-shell" style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: "32px 24px 80px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(circle at 20% 10%, rgba(255,107,53,0.08), transparent 30%), radial-gradient(circle at 80% 20%, rgba(6,214,160,0.08), transparent 28%)" }} />
       <div style={{ maxWidth: 1040, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <Link href="/workbench" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--text-muted)", marginBottom: 28, fontSize: 14, textDecoration: "none" }}>
@@ -113,7 +113,7 @@ export default function PricingPage() {
             const isPro = card.id === "pro";
             const isProMax = card.id === "pro_max";
             return (
-              <div key={card.id} style={{ 
+              <div key={card.id} className="pricing-card" style={{ 
                 background: "var(--bg-secondary)", 
                 border: isCurrent ? `1px solid ${isProMax ? "rgba(139,92,246,0.35)" : isPro ? "rgba(245,158,11,0.35)" : "var(--accent-border)"}` : "1px solid var(--border-primary)", 
                 borderRadius: 24, 
@@ -216,7 +216,13 @@ export default function PricingPage() {
           {process.env.NEXT_PUBLIC_CONTACT_EMAIL && ` Contact: ${process.env.NEXT_PUBLIC_CONTACT_EMAIL}`}
         </div>
 
-        <style>{`@media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr !important; } }`}</style>
+        <style>{`
+          @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr !important; } }
+          @media (max-width: 640px) {
+            .pricing-shell { padding: 18px 14px 56px !important; }
+            .pricing-card { padding: 22px 18px !important; border-radius: 18px !important; }
+          }
+        `}</style>
       </div>
     </div>
   );

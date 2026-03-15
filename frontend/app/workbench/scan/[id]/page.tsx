@@ -481,7 +481,7 @@ export default function ScanDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: 24 }}>
+    <div className="scan-detail-shell" style={{ minHeight: "100vh", background: "var(--bg-primary)", padding: 24 }}>
       <div style={{ maxWidth: 860, margin: "0 auto" }}>
         <Link
           href="/workbench"
@@ -498,6 +498,7 @@ export default function ScanDetailPage() {
         </Link>
 
         <div
+          className="scan-detail-header"
           style={{
             borderRadius: 16,
             border: "1px solid var(--border-primary)",
@@ -649,7 +650,13 @@ export default function ScanDetailPage() {
           </div>
         ) : null}
 
-        <style>{`@media(max-width:760px){.scan-report-grid{grid-template-columns:1fr !important}}`}</style>
+        <style>{`
+          @media(max-width:760px){
+            .scan-report-grid{grid-template-columns:1fr !important}
+            .scan-detail-shell{padding:16px !important}
+            .scan-detail-header{padding:16px 14px !important}
+          }
+        `}</style>
       </div>
     </div>
   );

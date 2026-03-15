@@ -1098,7 +1098,7 @@ export default function WorkbenchClient() {
             </p>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="workbench-header-meta" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 99, border: "1px solid var(--border-primary)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600 }}>
               <Clock size={12} /> {liveTime}
             </div>
@@ -1214,7 +1214,7 @@ export default function WorkbenchClient() {
         {profileMenuOpen && <div style={{ position: "fixed", inset: 0, zIndex: 50 }} onClick={() => setProfileMenuOpen(false)} />}
 
         {/* Content */}
-        <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
+        <main className="workbench-main" style={{ flex: 1, overflow: "auto", padding: 24 }}>
 
           {/* ── SCAN VIEW ── */}
           {activeView === "scan" && (
@@ -1222,11 +1222,11 @@ export default function WorkbenchClient() {
               {/* Stats row */}
               <div style={{ marginBottom: 24 }}>
                 {statsLoading ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                  <div className="scan-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
                     {[1, 2, 3].map(i => <div key={i} style={{ height: 88, background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 12, animation: "pulse 1.5s ease infinite" }} />)}
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                  <div className="scan-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
                     {[
                       { label: "Total Documents", value: countTotal, subtitle: "All time", icon: FileText, color: "#FF6B35" },
                       { label: "Average Risk Score", value: countAvgRisk, subtitle: "Across completed scans", icon: BarChart3, color: "#3B82F6" },
@@ -1300,7 +1300,7 @@ export default function WorkbenchClient() {
                           {isPro ? <Crown size={18} color="var(--pro)" /> : <Shield size={18} color="var(--cyan)" />}
                         </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                      <div className="scan-status-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
                         <div className="card-inset" style={{ padding: 14 }}>
                           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Formats</div>
                           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>PDF, images, scans</div>
@@ -1312,7 +1312,7 @@ export default function WorkbenchClient() {
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                    <div className="scan-quick-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                       <button onClick={() => setActiveView("history")} className="card-interactive" style={{ padding: 18, textAlign: "left", cursor: "pointer" }}>
                         <History size={18} color="var(--accent-primary)" style={{ marginBottom: 10 }} />
                         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>Recent scans</div>
@@ -1387,7 +1387,7 @@ export default function WorkbenchClient() {
             <div style={{ maxWidth: 820, margin: "0 auto" }}>
               {/* Stats */}
               {history.length > 0 && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 24 }}>
+                <div className="history-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 24 }}>
                   {[
                     { label: "Total Scans", value: history.length, icon: FileSearch, color: "var(--accent-primary)" },
                     { label: "Avg Risk", value: (() => { const d = history.filter(s => s.status === "done" && s.risk_score != null); return d.length ? Math.round(d.reduce((a, s) => a + (s.risk_score ?? 0), 0) / d.length) : "—"; })(), icon: TrendingUp, color: "var(--cyan)" },
@@ -1443,7 +1443,7 @@ export default function WorkbenchClient() {
 
           {/* ── CHAT VIEW ── */}
           {activeView === "chat" && (
-            <div style={{ maxWidth: 760, margin: "0 auto", height: "calc(100vh - 56px - 48px)" }}>
+            <div className="chat-shell" style={{ maxWidth: 760, margin: "0 auto", height: "calc(100vh - 56px - 48px)" }}>
               <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 18, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 {/* Chat header */}
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-primary)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "rgba(255,255,255,0.01)" }}>
@@ -1550,11 +1550,24 @@ export default function WorkbenchClient() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulseRing { 0%{box-shadow:0 0 0 0 rgba(255,90,31,0.4)} 70%{box-shadow:0 0 0 16px rgba(255,90,31,0)} 100%{box-shadow:0 0 0 0 rgba(255,90,31,0)} }
         @keyframes typingDot { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-4px);opacity:1} }
-        @media(max-width:900px) { .scan-intro-grid { grid-template-columns: 1fr !important; } }
+        @media(max-width:1100px) {
+          .workbench-header-meta { gap: 8px !important; }
+        }
+        @media(max-width:900px) {
+          .scan-intro-grid { grid-template-columns: 1fr !important; }
+          .scan-stats-grid,
+          .history-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
         @media(max-width:640px) {
           aside { display: none; }
           .workbench-mobile-nav { display: block !important; }
-          main { padding: 16px !important; }
+          .workbench-header-meta { display: none !important; }
+          .workbench-main { padding: 16px !important; }
+          .scan-stats-grid,
+          .history-stats-grid,
+          .scan-status-grid,
+          .scan-quick-grid { grid-template-columns: 1fr !important; }
+          .chat-shell { height: calc(100vh - 56px - 126px) !important; }
         }
       `}</style>
     </div>

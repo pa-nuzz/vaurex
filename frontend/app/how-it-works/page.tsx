@@ -5,8 +5,8 @@ import { ArrowLeft, Upload, Brain, FileText, Shield, CheckCircle, ArrowRight } f
 
 export default function HowItWorksPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px" }}>
+    <div className="how-shell" style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
+      <div className="how-container" style={{ maxWidth: 800, margin: "0 auto", padding: "24px" }}>
         {/* Back button */}
         <Link href="/" style={{ 
           display: "inline-flex", 
@@ -48,7 +48,7 @@ export default function HowItWorksPage() {
         {/* Steps */}
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
           {/* Step 1 */}
-          <div style={{ 
+          <div className="how-step" style={{ 
             background: "var(--bg-secondary)", 
             border: "1px solid var(--border-primary)", 
             borderRadius: 16, 
@@ -95,7 +95,7 @@ export default function HowItWorksPage() {
           </div>
 
           {/* Step 2 */}
-          <div style={{ 
+          <div className="how-step" style={{ 
             background: "var(--bg-secondary)", 
             border: "1px solid var(--border-primary)", 
             borderRadius: 16, 
@@ -141,7 +141,7 @@ export default function HowItWorksPage() {
           </div>
 
           {/* Step 3 */}
-          <div style={{ 
+          <div className="how-step" style={{ 
             background: "var(--bg-secondary)", 
             border: "1px solid var(--border-primary)", 
             borderRadius: 16, 
@@ -169,7 +169,7 @@ export default function HowItWorksPage() {
               <p style={{ fontSize: 16, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
                 Receive a comprehensive intelligence report with risk scores, extracted entities, compliance flags, and actionable insights.
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+              <div className="how-step-stats" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
                 {[
                   { label: "Risk Score", value: "0-100" },
                   { label: "Entities Found", value: "50+" },
@@ -191,7 +191,7 @@ export default function HowItWorksPage() {
           </div>
 
           {/* Step 4 */}
-          <div style={{ 
+          <div className="how-step" style={{ 
             background: "var(--bg-secondary)", 
             border: "1px solid var(--border-primary)", 
             borderRadius: 16, 
@@ -286,6 +286,13 @@ export default function HowItWorksPage() {
             </Link>
           </div>
         </div>
+        <style>{`
+          @media (max-width: 768px) {
+            .how-container { padding: 16px 14px 40px !important; }
+            .how-step { flex-direction: column !important; gap: 16px !important; padding: 20px 16px !important; }
+            .how-step-stats { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
       </div>
     </div>
   );
