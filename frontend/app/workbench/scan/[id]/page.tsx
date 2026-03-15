@@ -297,17 +297,25 @@ export default function ScanDetailPage() {
           <meta charset=\"utf-8\" />
           <title>Scan Report - ${escapeHtml(scan.filename)}</title>
           <style>
-            body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#111; color:#EEE; padding:24px; line-height:1.55; }
-            .card { border:1px solid #2F2F2F; border-radius:12px; padding:16px; margin-bottom:16px; background:#1A1A1C; }
-            .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-weight:700; font-size:12px; background:#2A2A2C; border:1px solid #3C3C3E; }
-            h1,h2,h3,h4 { margin:0 0 10px; }
-            pre { white-space: pre-wrap; word-wrap: break-word; background:#0E0E10; border:1px solid #333; border-radius:10px; padding:12px; color:#D8D8D8; font-size:12px; }
+            * { box-sizing: border-box; }
+            body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#05070d; color:#F8FAFC; padding:24px; line-height:1.65; }
+            .card { border:1px solid #334155; border-radius:14px; padding:16px; margin-bottom:16px; background:linear-gradient(180deg,#0f172a 0%, #111827 100%); box-shadow:0 10px 30px rgba(2,6,23,.35); }
+            .badge { display:inline-block; padding:5px 11px; border-radius:999px; font-weight:800; font-size:12px; background:#0b1220; border:1px solid #334155; color:#E2E8F0; }
+            h1,h2,h3,h4 { margin:0 0 10px; color:#E2E8F0; }
+            p, li { color:#CBD5E1; }
+            pre { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; background:#0B1220; border:1px solid #334155; border-radius:10px; padding:12px; color:#E2E8F0; font-size:12px; line-height:1.8; }
+            .page-break { break-before: page; page-break-before: always; }
+            @media print { body { padding: 18px 20px; } @page { margin: 12mm 10mm; } }
           </style>
         </head>
         <body>
           <div class=\"card\">
+            <div style=\"display:flex; align-items:center; gap:10px; margin-bottom:8px;\">
+              <div style=\"width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#FF6B35,#3B82F6); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800;\">✦</div>
+              <div style=\"font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#94A3B8;\">Vaurex AI Intelligence Report</div>
+            </div>
             <h1 style=\"margin-bottom:4px;\">${escapeHtml(scan.filename)}</h1>
-            <div style=\"color:#A0A0A0; font-size:12px; margin-bottom:10px;\">Generated ${escapeHtml(formatDate(scan.created_at))}</div>
+            <div style=\"color:#94A3B8; font-size:12px; margin-bottom:10px;\">Generated ${escapeHtml(formatDate(scan.created_at))}</div>
             <span class=\"badge\">Risk ${score} · ${escapeHtml(scan.risk_label || riskLabel(score))}</span>
           </div>
 
@@ -326,8 +334,8 @@ export default function ScanDetailPage() {
             ${entitiesHtml || "<p>No entities extracted.</p>"}
           </div>
 
-          <div class=\"card\">
-            <h2>Extracted Contents</h2>
+          <div class=\"card page-break\">
+            <h2>Extracted Contents (Full)</h2>
             <pre>${escapeHtml(scan.clean_text || "No extracted text available.")}</pre>
           </div>
         </body>

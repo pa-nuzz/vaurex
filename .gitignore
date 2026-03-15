@@ -21,6 +21,7 @@ backend/.pytest_cache/
 **/.DS_Store
 frontend/tsconfig.tsbuildinfo
 backend/job_queue.sqlite3
+backend/password_reset.sqlite3
 backend/job_payloads/
 *.log
 .vscode/

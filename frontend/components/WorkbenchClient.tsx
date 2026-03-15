@@ -286,58 +286,69 @@ function ScanReport({ result, onDownloadText, downloading, onReset }: {
   const severityColors: Record<string, string> = { low: "#10B981", medium: "#F59E0B", high: "#EF4444", critical: "#DC2626" };
 
   function downloadPdf() {
+    const esc = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
     const ents = result.entities || [];
-    const entityRows = ents.map(e => `<tr><td style="padding:6px 12px;border-bottom:1px solid #2a2a2e;color:#9ca3af;font-size:12px">${e.type}</td><td style="padding:6px 12px;border-bottom:1px solid #2a2a2e;color:#f4f4f5;font-size:12px;font-weight:600">${e.value}</td><td style="padding:6px 12px;border-bottom:1px solid #2a2a2e;color:#71717a;font-size:11px">${e.context || ""}</td></tr>`).join("");
+    const entityRows = ents.map(e => `<tr><td style="padding:7px 12px;border-bottom:1px solid #2a2a2e;color:#cbd5e1;font-size:12px">${esc(e.type)}</td><td style="padding:7px 12px;border-bottom:1px solid #2a2a2e;color:#f8fafc;font-size:12px;font-weight:700">${esc(e.value)}</td><td style="padding:7px 12px;border-bottom:1px solid #2a2a2e;color:#94a3b8;font-size:11px">${esc(e.context || "")}</td></tr>`).join("");
     const flagRows = (result.flags || []).map((f, idx) => {
       const fo = typeof f === "object" ? f as FlagObject : null;
       const sevColor = fo?.severity ? severityColors[fo.severity] || "#EF4444" : "#EF4444";
       return fo
         ? `<div style="margin-bottom:14px;padding:14px 18px;border-radius:10px;background:rgba(239,68,68,0.05);border-left:3px solid ${sevColor}">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${sevColor};background:${sevColor}18;padding:2px 8px;border-radius:99px">${fo.severity || "flag"}</span>
+              <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${sevColor};background:${sevColor}18;padding:2px 8px;border-radius:99px">${esc(fo.severity || "flag")}</span>
             </div>
-            ${fo.quote ? `<p style="font-size:12px;color:#a1a1aa;font-style:italic;margin:0 0 6px">"${fo.quote}"</p>` : ""}
-            ${fo.explanation ? `<p style="font-size:13px;color:#d4d4d8;margin:0 0 6px">${fo.explanation}</p>` : ""}
-            ${fo.action ? `<p style="font-size:12px;color:#9ca3af;margin:0"><strong style="color:#f4f4f5">Action:</strong> ${fo.action}</p>` : ""}
+            ${fo.quote ? `<p style="font-size:12px;color:#a1a1aa;font-style:italic;margin:0 0 6px">"${esc(fo.quote)}"</p>` : ""}
+            ${fo.explanation ? `<p style="font-size:13px;color:#d4d4d8;margin:0 0 6px">${esc(fo.explanation)}</p>` : ""}
+            ${fo.action ? `<p style="font-size:12px;color:#9ca3af;margin:0"><strong style="color:#f4f4f5">Action:</strong> ${esc(fo.action)}</p>` : ""}
           </div>`
-        : `<div style="margin-bottom:8px;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,0.05);border-left:3px solid #EF4444"><p style="font-size:13px;color:#d4d4d8;margin:0">${f}</p></div>`;
+        : `<div style="margin-bottom:8px;padding:10px 14px;border-radius:8px;background:rgba(239,68,68,0.05);border-left:3px solid #EF4444"><p style="font-size:13px;color:#d4d4d8;margin:0">${esc(String(f))}</p></div>`;
     }).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Vaurex Report — ${result.filename}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Inter',sans-serif;background:#09090b;color:#f4f4f5;padding:48px 56px;line-height:1.6}
+  body{font-family:'Inter',sans-serif;background:#05070d;color:#f8fafc;padding:44px 52px;line-height:1.65}
   h1{font-size:22px;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px}
-  h2{font-size:15px;font-weight:700;letter-spacing:-0.01em;margin-bottom:12px}
-  .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#71717a}
-  .card{background:#18181b;border:1px solid #27272a;border-radius:14px;padding:22px 24px;margin-bottom:20px}
+  h2{font-size:15px;font-weight:800;letter-spacing:-0.01em;margin-bottom:12px;color:#e2e8f0}
+  .label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8}
+  .card{background:linear-gradient(180deg,#0f172a 0%, #111827 100%);border:1px solid #334155;border-radius:14px;padding:22px 24px;margin-bottom:20px;box-shadow:0 10px 30px rgba(2,6,23,.35)}
   .score{font-size:56px;font-weight:800;letter-spacing:-0.03em;line-height:1}
   table{width:100%;border-collapse:collapse;margin-top:8px}
-  th{text-align:left;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#71717a;border-bottom:1px solid #27272a}
-  .footer{margin-top:40px;padding-top:20px;border-top:1px solid #27272a;display:flex;justify-content:space-between;align-items:center}
-  @media print{body{padding:24px 32px}@page{margin:16mm 12mm}}
+  th{text-align:left;padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;border-bottom:1px solid #334155}
+  .summary{font-size:14px;color:#cbd5e1;line-height:1.85;white-space:pre-wrap}
+  .raw{font-size:11.5px;color:#cbd5e1;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;border:1px solid #334155;background:#0b1220;border-radius:10px;padding:12px}
+  .footer{margin-top:40px;padding-top:20px;border-top:1px solid #334155;display:flex;justify-content:space-between;align-items:center;color:#94a3b8}
+  .page-break{break-before:page;page-break-before:always}
+  @media print{body{padding:18px 20px}@page{margin:12mm 10mm}}
 </style></head><body>
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
-  <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FF6B35,#FF8C42);display:flex;align-items:center;justify-content:center;font-size:18px">✦</div>
-  <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#71717a;margin-bottom:2px">Vaurex AI Intelligence Report</div><h1>${result.filename}</h1></div>
-  <div style="margin-left:auto;text-align:right"><div class="label">Analyzed</div><div style="font-size:13px;color:#a1a1aa">${formatDate(result.created_at)}</div></div>
+  <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FF6B35,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:18px">✦</div>
+  <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-bottom:2px">Vaurex AI Intelligence Report</div><h1>${esc(result.filename)}</h1></div>
+  <div style="margin-left:auto;text-align:right"><div class="label">Analyzed</div><div style="font-size:13px;color:#cbd5e1">${formatDate(result.created_at)}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:180px 1fr;gap:16px;margin-bottom:20px">
   <div class="card" style="text-align:center;background:${riskBg(score)};border-color:${color}30">
     <div class="label" style="margin-bottom:12px">Risk Score</div>
     <div class="score" style="color:${color}">${score}</div>
-    <div style="margin-top:10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${color}">${result.risk_label || riskLabel(score)} Risk</div>
+    <div style="margin-top:10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${color}">${esc(result.risk_label || riskLabel(score))} Risk</div>
   </div>
   <div class="card">
     <h2>Executive Summary</h2>
-    <p style="font-size:14px;color:#a1a1aa;line-height:1.8">${result.summary || "No summary available."}</p>
+    <p class="summary">${esc(result.summary || "No summary available.")}</p>
   </div>
 </div>
 ${ents.length > 0 ? `<div class="card"><h2>Extracted Entities (${ents.length})</h2><table><thead><tr><th>Type</th><th>Value</th><th>Context</th></tr></thead><tbody>${entityRows}</tbody></table></div>` : ""}
 ${result.flags?.length ? `<div class="card" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.03)"><h2>Risk Flags (${result.flags.length})</h2>${flagRows}</div>` : ""}
-${result.clean_text ? `<div class="card"><h2>Extracted Text</h2><pre style="font-size:11px;color:#71717a;white-space:pre-wrap;line-height:1.7;max-height:400px;overflow:hidden">${result.clean_text.slice(0, 3000)}${result.clean_text.length > 3000 ? "\n… (truncated)" : ""}</pre></div>` : ""}
-<div class="footer"><div style="font-size:12px;color:#52525b">Generated by Vaurex AI · ${new Date().toLocaleDateString()}</div><div style="font-size:11px;color:#52525b">Confidential — Do not distribute</div></div>
+${result.clean_text ? `<div class="card page-break"><h2>Extracted Text (Full)</h2><pre class="raw">${esc(result.clean_text)}</pre></div>` : ""}
+<div class="footer"><div style="font-size:12px">Generated by Vaurex AI · ${new Date().toLocaleDateString()}</div><div style="font-size:11px">Confidential — Do not distribute</div></div>
 </body></html>`;
 
     const w = window.open("", "_blank", "width=900,height=700");
