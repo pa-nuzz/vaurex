@@ -182,8 +182,11 @@ async def _process_job(row: sqlite3.Row) -> None:
         _mark_done(scan_id)
         try:
             payload_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "queue.payload.cleanup_failed",
+                extra={"scan_id": scan_id, "error": str(exc)},
+            )
 
         logger.info(
             "queue.job.completed",
@@ -204,7 +207,9 @@ async def _process_job(row: sqlite3.Row) -> None:
 
 
 async def _worker_loop() -> None:
-    assert _stop_event is not None
+    if _stop_event is None:
+        logger.error("queue.worker.stop_event_missing")
+        return
     while not _stop_event.is_set():
         row = await asyncio.to_thread(_fetch_next_job)
         if row is None:
@@ -227,7 +232,10 @@ async def stop_job_worker() -> None:
     global _worker_task, _stop_event
     if not _worker_task:
         return
-    assert _stop_event is not None
+    if _stop_event is None:
+        logger.warning("queue.worker.stop_event_missing_on_stop")
+        _worker_task = None
+        return
     _stop_event.set()
     _worker_task.cancel()
     try:

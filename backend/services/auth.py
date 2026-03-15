@@ -3,17 +3,15 @@ from fastapi import Request, HTTPException
 from services.supabase_client import supabase
 from services.audit import audit_event
 from services.rate_limiter import GLOBAL_RATE_LIMITER
-
-
-AUTH_LIMIT_PER_MIN = int(os.getenv("AUTH_RATE_LIMIT_PER_MIN", "180"))
+from services.config import AUTH_RATE_LIMIT_PER_MIN
 
 
 async def get_current_user(request: Request) -> dict:
     """Extract and verify the JWT from the Authorization header."""
     client_ip = request.client.host if request.client else "unknown"
-    allowed, retry_after = GLOBAL_RATE_LIMITER.allow(
+    allowed, retry_after, _, _ = GLOBAL_RATE_LIMITER.allow(
         f"auth:{client_ip}",
-        AUTH_LIMIT_PER_MIN,
+        AUTH_RATE_LIMIT_PER_MIN,
         60,
     )
     if not allowed:
@@ -35,9 +33,10 @@ async def get_current_user(request: Request) -> dict:
     token = auth[7:]
     try:
         res = supabase.auth.get_user(token)
-        if not res.user:
+        if not res or not res.user or not getattr(res.user, "id", None):
             audit_event(request, event="auth.invalid_token", outcome="denied")
             raise HTTPException(status_code=401, detail="Invalid token")
+        request.state.user_id = res.user.id
         audit_event(
             request,
             event="auth.success",

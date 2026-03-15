@@ -6,8 +6,10 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import {
   Sparkles, ArrowRight, Upload, Shield, Zap, FileSearch,
   Brain, BarChart3, Clock, CheckCircle, AlertTriangle,
-  ChevronRight, Globe, Lock, Eye,
+  ChevronRight, Globe, Lock, Eye, Crown,
 } from "lucide-react";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { ShootingStars } from "@/components/ui/shooting-stars";
 
 /* ── Fade-in section wrapper ── */
 function FadeSection({ children, className = "", delay = 0 }: {
@@ -87,7 +89,9 @@ export default function LandingClient() {
           </div>
           <span className="font-display" style={{ fontWeight: 800, fontSize: 16, color: "var(--text-primary)" }}>Vaurex</span>
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          <Link href="/how-it-works" style={{ color: "var(--text-1)", textDecoration: "none", fontWeight: 500, transition: "color 0.2s", padding: "8px 0" }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--accent)"} onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--text-1)"}>How it works</Link>
+          <Link href="/pricing" style={{ color: "var(--text-1)", textDecoration: "none", fontWeight: 500, transition: "color 0.2s", padding: "8px 0" }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--accent)"} onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--text-1)"}>Pricing</Link>
           <Link href="/login" className="btn-ghost" style={{ padding: "8px 16px", fontSize: 13 }}>Sign in</Link>
           <Link href="/register" className="btn-primary" style={{ padding: "8px 18px", fontSize: 13 }}>
             Get started <ArrowRight size={13} />
@@ -98,9 +102,20 @@ export default function LandingClient() {
       {/* ── Hero ── */}
       <section ref={heroRef} style={{ position: "relative", overflow: "hidden", paddingTop: 140, paddingBottom: 80 }}>
         {/* Ambient orbs */}
-        <div style={{ position: "absolute", top: "10%", left: "15%", width: 400, height: 400, borderRadius: "50%", background: "rgba(124,92,252,0.06)", filter: "blur(100px)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "10%", left: "15%", width: 400, height: 400, borderRadius: "50%", background: "rgba(255,107,53,0.06)", filter: "blur(100px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", top: "30%", right: "10%", width: 300, height: 300, borderRadius: "50%", background: "rgba(6,214,160,0.04)", filter: "blur(80px)", pointerEvents: "none" }} />
-
+          <ShootingStars
+            minSpeed={14}
+            maxSpeed={28}
+            minDelay={900}
+            maxDelay={2400}
+            starColor="#FFF7ED"
+            trailColor="#FF8C42"
+            starWidth={140}
+            starHeight={2}
+            className="opacity-80"
+          />
+         
         <motion.div style={{ y: heroY, opacity: heroOpacity, position: "relative", zIndex: 1 }}>
           <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center", padding: "0 24px" }}>
             <div className="badge-accent" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 24, fontSize: 12 }}>
@@ -113,7 +128,7 @@ export default function LandingClient() {
             }}>
               Know what&apos;s in your<br />
               <span style={{
-                background: "linear-gradient(135deg, var(--accent-primary), var(--cyan))",
+                background: "linear-gradient(135deg, var(--accent-primary), var(--blue))",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               }}>
                 documents
@@ -128,7 +143,9 @@ export default function LandingClient() {
               <Link href="/register" className="btn-primary" style={{ padding: "14px 28px", fontSize: 15 }}>
                 Start free <ArrowRight size={15} />
               </Link>
-              <a href="#demo" className="btn-ghost" style={{ padding: "14px 28px", fontSize: 15 }}>
+              <a href="#demo" className="btn-ghost" style={{ padding: "14px 28px", fontSize: 15, transition: "all 0.2s" }} 
+                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--blue)"} 
+                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"}>
                 See it in action <ChevronRight size={15} />
               </a>
             </div>
@@ -271,17 +288,20 @@ export default function LandingClient() {
                 { icon: AlertTriangle, title: "Fraud Detection",     desc: "Flag suspicious patterns and anomalies in real-time." },
               ].map((f, i) => (
                 <FadeSection key={i} delay={i * 0.1}>
-                  <div className="card-interactive" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "var(--accent-surface)", border: "1px solid var(--accent-border)",
-                    }}>
-                      <f.icon size={18} color="var(--accent-primary)" />
-                    </div>
-                    <div>
-                      <h4 className="font-display" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>{f.title}</h4>
-                      <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{f.desc}</p>
+                  <div style={{ position: "relative" }}>
+                    <GlowingEffect spread={32} glow proximity={64} inactiveZone={0.15} />
+                    <div className="card-interactive" style={{ display: "flex", gap: 16, alignItems: "flex-start", position: "relative", overflow: "hidden" }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: "var(--accent-surface)", border: "1px solid var(--accent-border)",
+                      }}>
+                        <f.icon size={18} color="var(--accent-primary)" />
+                      </div>
+                      <div>
+                        <h4 className="font-display" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>{f.title}</h4>
+                        <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{f.desc}</p>
+                      </div>
                     </div>
                   </div>
                 </FadeSection>
@@ -371,7 +391,9 @@ export default function LandingClient() {
               <div className="card" style={{ textAlign: "center", height: "100%" }}>
                 <div className="font-mono" style={{
                   fontSize: 32, fontWeight: 700, marginBottom: 12,
-                  background: "linear-gradient(135deg, var(--accent-primary), var(--cyan))",
+                  background: i === 0 ? "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))" : 
+                           i === 1 ? "linear-gradient(135deg, var(--blue), var(--blue-hover))" : 
+                           "linear-gradient(135deg, var(--cyan), var(--accent-primary))",
                   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                 }}>
                   {s.num}
@@ -384,22 +406,165 @@ export default function LandingClient() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
+      <section style={{ padding: "0 24px 100px", maxWidth: 1100, margin: "0 auto" }}>
+        <FadeSection>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <h2 className="font-display" style={{ fontSize: 36, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>
+              Choose Your Plan
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: 16, maxWidth: 480, margin: "0 auto" }}>
+              Start free, upgrade to Pro, or contact us for enterprise needs.
+            </p>
+          </div>
+        </FadeSection>
+
+        <div className="pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 20, marginBottom: 60 }}>
+          {[
+            {
+              id: "free",
+              title: "Free",
+              price: "$0",
+              badge: "Start here",
+              features: ["5 document scans per day", "5-6 chat sessions per day", "Risk scoring", "Entity extraction", "Daily reset"],
+              color: "#FF6B35",
+              link: "/register?plan=free"
+            },
+            {
+              id: "pro", 
+              title: "Pro",
+              price: "$19/month",
+              badge: "Most popular",
+              features: ["Unlimited scans", "Unlimited chat", "Priority processing", "Advanced exports", "No limits"],
+              color: "#3B82F6",
+              link: "/register?plan=pro"
+            },
+            {
+              id: "pro_max",
+              title: "Pro Max",
+              price: "Contact",
+              badge: "Enterprise",
+              features: ["Everything in Pro", "Custom AI models", "API access", "Dedicated support", "White-label"],
+              color: "#8B5CF6",
+              link: `mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'support@vaurex.com'}?subject=Pro Max Inquiry`
+            }
+          ].map((plan, i) => (
+            <FadeSection key={i} delay={i * 0.1}>
+              <div style={{
+                background: "var(--bg-secondary)",
+                border: `1px solid ${plan.color}25`,
+                borderRadius: 16,
+                padding: 28,
+                height: "100%",
+                position: "relative",
+                overflow: "hidden"
+              }}>
+                <div style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  background: `${plan.color}15`,
+                  border: `1px solid ${plan.color}30`,
+                  borderRadius: 20,
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: plan.color,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em"
+                }}>
+                  {plan.badge}
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <h3 style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>
+                    {plan.title}
+                  </h3>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
+                    {plan.price}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+                  {plan.features.map((feature, j) => (
+                    <div key={j} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--text-secondary)" }}>
+                      <CheckCircle size={15} color={plan.color} />
+                      {feature}
+                    </div>
+                  ))}
+                </div>
+                {plan.id === "pro_max" ? (
+                  <a
+                    href={plan.link}
+                    className="btn-primary"
+                    style={{
+                      width: "100%",
+                      padding: "12px 18px",
+                      borderRadius: 12,
+                      background: `linear-gradient(135deg, ${plan.color}, #7C3AED)`,
+                      textDecoration: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8
+                    }}
+                  >
+                    <Crown size={15} /> Contact Sales
+                  </a>
+                ) : (
+                  <Link
+                    href={plan.link}
+                    className={plan.id === "pro" ? "btn-primary" : "btn-ghost"}
+                    style={{
+                      width: "100%",
+                      padding: "12px 18px",
+                      borderRadius: 12,
+                      background: plan.id === "pro" ? `linear-gradient(135deg, ${plan.color}, #D97706)` : "transparent",
+                      border: plan.id === "free" ? "1px solid var(--border-primary)" : "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8
+                    }}
+                  >
+                    {plan.id === "pro" ? <Crown size={15} /> : <Shield size={15} />}
+                    {plan.id === "pro" ? "Get Pro" : "Start Free"}
+                  </Link>
+                )}
+              </div>
+            </FadeSection>
+          ))}
+        </div>
+
+        <style>{`
+          @media (max-width: 900px) {
+            .pricing-grid { grid-template-columns: 1fr !important; }
+          }
+          @media (min-width: 600px) and (max-width: 900px) {
+            .pricing-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          }
+        `}</style>
+      </section>
+
       {/* ── CTA ── */}
       <FadeSection>
         <section style={{
           margin: "0 24px 100px", padding: 64, borderRadius: 24, textAlign: "center",
-          background: "linear-gradient(135deg, rgba(124,92,252,0.08) 0%, rgba(6,214,160,0.06) 100%)",
+          background: "linear-gradient(135deg, rgba(255,107,53,0.08) 0%, rgba(59,130,246,0.06) 100%)",
           border: "1px solid var(--accent-border)",
         }}>
           <h2 className="font-display" style={{ fontSize: 32, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12 }}>
-            Ready to see what&apos;s in your documents?
+            Ready to get started?
           </h2>
           <p style={{ color: "var(--text-secondary)", fontSize: 16, marginBottom: 32, maxWidth: 440, margin: "0 auto 32px" }}>
-            Start with 3 free scans. No credit card required.
+            Join thousands of professionals using AI to analyze documents instantly.
           </p>
-          <Link href="/register" className="btn-primary" style={{ padding: "14px 32px", fontSize: 15 }}>
-            Get started free <ArrowRight size={15} />
-          </Link>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/register?plan=free" className="btn-ghost" style={{ padding: "14px 28px", fontSize: 15 }}>
+              <Shield size={15} /> Start Free
+            </Link>
+            <Link href="/register?plan=pro" className="btn-primary" style={{ padding: "14px 32px", fontSize: 15 }}>
+              <Crown size={15} /> Get Pro <ArrowRight size={15} />
+            </Link>
+          </div>
         </section>
       </FadeSection>
 
@@ -409,6 +574,11 @@ export default function LandingClient() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         maxWidth: 1100, margin: "0 auto", flexWrap: "wrap", gap: 16,
       }}>
+        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <Link href="/how-it-works" style={{ color: "var(--text-1)", textDecoration: "none", fontWeight: 500, transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--accent)"} onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--text-1)"}>How it works</Link>
+          <Link href="/pricing" style={{ color: "var(--text-1)", textDecoration: "none", fontWeight: 500, transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--accent)"} onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--text-1)"}>Pricing</Link>
+          <Link href="/login" style={{ color: "var(--text-1)", textDecoration: "none", fontWeight: 500, transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--accent)"} onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--text-1)"}>Sign in</Link>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
             width: 24, height: 24, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",

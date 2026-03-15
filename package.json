@@ -1,0 +1,16 @@
+{
+  "name": "vaurex",
+  "private": true,
+  "scripts": {
+    "stop:dev": "./scripts/stop-dev-ports.sh",
+    "dev": "./scripts/start-frontend-dev.sh",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "dev:frontend": "./scripts/start-frontend-dev.sh",
+    "dev:backend": "./scripts/start-backend-dev.sh",
+    "build:frontend": "npm --prefix frontend run build",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "test:backend": "cd backend && ./venv/bin/python -m pytest -q",
+    "backend:test": "cd backend && ./venv/bin/python -m pytest -q"
+  }
+}

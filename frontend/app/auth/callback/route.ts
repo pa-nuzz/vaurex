@@ -1,45 +1,52 @@
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    "Missing env vars: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  );
-}
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const nextRaw = searchParams.get("next") ?? "/workbench";
-  const next = nextRaw.startsWith("/") ? nextRaw : "/workbench";
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/workbench";
+  const error = searchParams.get("error");
 
-  if (code) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(
-          cookiesToSet: Array<{
-            name: string;
-            value: string;
-            options?: Record<string, unknown>;
-          }>
-        ) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        },
-      },
-    });
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+  // Handle authentication errors
+  if (error) {
+    console.error("Auth error:", error);
+    const loginUrl = new URL("/login", origin);
+    loginUrl.searchParams.set("error", error);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  if (code) {
+    try {
+      // Ensure cookies are wired via shared helper so middleware and routes stay in sync.
+      await cookies();
+      const supabase = await createServerSupabaseClient();
+      
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      
+      if (exchangeError) {
+        console.error("Exchange code error:", exchangeError);
+        const loginUrl = new URL("/login", origin);
+        loginUrl.searchParams.set("error", "exchange_failed");
+        loginUrl.searchParams.set("message", exchangeError.message);
+        return NextResponse.redirect(loginUrl);
+      }
+      
+      // Successfully authenticated - redirect to intended destination
+      console.log("Authentication successful, redirecting to:", next);
+      return NextResponse.redirect(new URL(next, origin));
+    } catch (err) {
+      console.error("Callback error:", err);
+      const loginUrl = new URL("/login", origin);
+      loginUrl.searchParams.set("error", "callback_failed");
+      loginUrl.searchParams.set("message", "Authentication failed");
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // No code provided - redirect to login
+  const loginUrl = new URL("/login", origin);
+  loginUrl.searchParams.set("error", "no_code");
+  return NextResponse.redirect(loginUrl);
 }

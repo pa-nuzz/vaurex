@@ -1,23 +1,61 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, Lock, Loader2, AlertCircle, Sparkles, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
+import { GoogleButton, AuthDivider } from "@/components/ui/OtpInput";
 
 function LoginInner() {
-  const router   = useRouter();
-  const params   = useSearchParams();
-  const nextRaw  = params.get("next") || "/workbench";
-  const next     = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/workbench";
+  const params = useSearchParams();
+  const router = useRouter();
+  const nextRaw = params.get("next") || "/workbench";
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/workbench";
+  const authError = params.get("error");
+  const authMessage = params.get("message");
   const supabase = createClient();
 
-  const [email,    setEmail]    = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [show,     setShow]     = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Set error message from URL params if present
+  useEffect(() => {
+    if (authError) {
+      switch (authError) {
+        case 'auth_failed':
+          setError("Authentication failed. Please try again.");
+          break;
+        case 'exchange_failed':
+          setError(authMessage || "Email verification failed. Please try again.");
+          break;
+        case 'callback_failed':
+          setError("Authentication callback failed. Please try again.");
+          break;
+        case 'no_code':
+          setError("No verification code provided. Please check your email link.");
+          break;
+        default:
+          setError(`Authentication error: ${authError}`);
+      }
+    }
+  }, [authError, authMessage]);
+
+  async function handleGoogleLogin() {
+    setGoogleLoading(true);
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    // Stays loading until redirect
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,119 +67,383 @@ function LoginInner() {
         setError(error.message);
         return;
       }
-      router.replace(next);
-      router.refresh();
+
+      await supabase.auth.getSession();
+      router.push(next);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg-primary)" }}>
-      {/* Decorative left panel */}
-      <div style={{
-        display: "none", flex: 1, position: "relative", overflow: "hidden",
-        background: "linear-gradient(160deg, #0C0C14 0%, #1A1030 100%)",
-      }} className="hidden lg:flex">
-        <div style={{
-          position: "absolute", top: "15%", left: "20%", width: 280, height: 280,
-          borderRadius: "50%", background: "rgba(124,92,252,0.08)", filter: "blur(80px)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "20%", right: "15%", width: 220, height: 220,
-          borderRadius: "50%", background: "rgba(6,214,160,0.06)", filter: "blur(60px)",
-        }} />
-        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 64px" }}>
-          <h2 className="font-display" style={{ fontSize: 36, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2, marginBottom: 16 }}>
-            Document<br />Intelligence,<br /><span style={{ color: "var(--accent-primary)" }}>Instantly.</span>
-          </h2>
-          <p style={{ fontSize: 15, color: "var(--text-secondary)", maxWidth: 320, lineHeight: 1.7 }}>
-            Upload any document and get AI-powered risk scoring, entity extraction, and executive summaries in seconds.
-          </p>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "var(--bg-base)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Radial gradient background glow */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          background:
+            "radial-gradient(ellipse 80% 60% at 50% -20%, rgba(255,107,53,0.08), transparent)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          background:
+            "radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,130,246,0.06), transparent)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Back to Home button */}
+      <Link
+        href="/"
+        style={{
+          position: "absolute",
+          top: 24,
+          left: 24,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          color: "var(--text-2)",
+          fontSize: 14,
+          fontWeight: 500,
+          transition: "color 150ms",
+          padding: "8px 12px",
+          borderRadius: 8,
+          border: "1px solid var(--border)",
+          background: "var(--bg-surface)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <ArrowLeft size={16} /> Home
+      </Link>
+
+      {/* Login card */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          position: "relative",
+          zIndex: 1,
+          background: "var(--bg-surface)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 16,
+          padding: 40,
+        }}
+      >
+        {/* Logo */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginBottom: 32,
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "var(--accent)",
+            }}
+          >
+            <Shield size={20} color="white" />
+          </div>
+          <span
+            style={{
+              fontWeight: 700,
+              fontSize: 22,
+              color: "var(--text-1)",
+            }}
+          >
+            Vaurex
+          </span>
         </div>
-      </div>
 
-      {/* Login form */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 40, textDecoration: "none" }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-              background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))",
-            }}>
-              <Sparkles size={15} color="white" fill="white" />
+        <h1
+          style={{
+            fontSize: 24,
+            fontWeight: 700,
+            color: "var(--accent)",
+            marginBottom: 8,
+            textAlign: "center",
+          }}
+        >
+          Welcome back
+        </h1>
+        <p
+          style={{
+            color: "var(--text-2)",
+            fontSize: 14,
+            marginBottom: 28,
+            textAlign: "center",
+          }}
+        >
+          Sign in to your account to continue
+        </p>
+
+        {error && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: 12,
+              borderRadius: 8,
+              marginBottom: 20,
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.2)",
+              color: "var(--danger)",
+              fontSize: 14,
+            }}
+          >
+            <AlertCircle size={15} style={{ flexShrink: 0 }} />
+            {error}
+          </div>
+        )}
+
+        {/* Google OAuth */}
+        <GoogleButton onClick={handleGoogleLogin} loading={googleLoading} />
+        
+        <AuthDivider />
+        
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "grid",
+            gap: 16,
+          }}
+        >
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-1)",
+                marginBottom: 8,
+              }}
+            >
+              Email
+            </label>
+            <div
+              style={{
+                position: "relative",
+              }}
+            >
+              <Mail
+                size={16}
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "var(--text-3)",
+                }}
+              />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+                style={{
+                  width: "100%",
+                  background: "#1C1C1E",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  color: "var(--text-1)",
+                  padding: "12px 14px 12px 44px",
+                  fontSize: 14,
+                  outline: "none",
+                  transition: "border-color 150ms",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "var(--accent)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "rgba(255,255,255,0.1)";
+                }}
+              />
             </div>
-            <span className="font-display" style={{ fontWeight: 800, fontSize: 16, color: "var(--text-primary)" }}>Vaurex</span>
-          </Link>
+          </div>
 
-          <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 40 }}>
-            <h1 className="font-display" style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6 }}>
-              Welcome back
-            </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: 15, marginBottom: 32 }}>
-              Sign in to your account
-            </p>
-
-            {error && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10, padding: 12, borderRadius: 12, marginBottom: 20,
-                background: "rgba(239,68,68,0.08)", border: "1.5px solid rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 14,
-              }}>
-                <AlertCircle size={15} style={{ flexShrink: 0 }} />{error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 8 }}>
-                  Email
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Mail size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                    placeholder="you@company.com" className="field field-icon" />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: 8 }}>
-                  Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-                  <input type={show ? "text" : "password"} required value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••" className="field field-icon" style={{ paddingRight: 44 }} />
-                  <button type="button" onClick={() => setShow(!show)}
-                    style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 2 }}>
-                    {show ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ textAlign: "right", marginBottom: 24 }}>
-                <Link href="/forgot-password" style={{ fontSize: 13, color: "var(--accent-primary)", fontWeight: 500 }}>
-                  Forgot password?
-                </Link>
-              </div>
-
-              <button type="submit" disabled={loading} className="btn-primary"
-                style={{ width: "100%", justifyContent: "center", padding: "12px", opacity: loading ? 0.7 : 1, cursor: loading ? "not-allowed" : "pointer" }}>
-                {loading ? <Loader2 size={15} className="animate-spin" /> : <>Sign in <ArrowRight size={14} /></>}
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "var(--text-1)",
+                marginBottom: 8,
+              }}
+            >
+              Password
+            </label>
+            <div
+              style={{
+                position: "relative",
+              }}
+            >
+              <Lock
+                size={16}
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "var(--text-3)",
+                }}
+              />
+              <input
+                type={show ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={{
+                  width: "100%",
+                  background: "#1C1C1E",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  color: "var(--text-1)",
+                  padding: "12px 44px 12px 44px",
+                  fontSize: 14,
+                  outline: "none",
+                  transition: "border-color 150ms",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "var(--accent)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "rgba(255,255,255,0.1)";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShow(!show)}
+                style={{
+                  position: "absolute",
+                  right: 14,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--text-3)",
+                  padding: 4,
+                }}
+              >
+                {show ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
-            </form>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0" }}>
-              <div style={{ flex: 1, height: 1, background: "var(--border-secondary)" }} />
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>or</span>
-              <div style={{ flex: 1, height: 1, background: "var(--border-secondary)" }} />
             </div>
+          </div>
 
-            <Link href="/register" className="btn-ghost" style={{ width: "100%", justifyContent: "center", padding: 11 }}>
-              Create a free account <ArrowRight size={13} />
+          <div
+            style={{
+              textAlign: "right",
+              marginTop: -4,
+            }}
+          >
+            <Link
+              href="/forgot-password"
+              style={{
+                fontSize: 13,
+                color: "var(--accent)",
+                fontWeight: 500,
+              }}
+            >
+              Forgot password?
             </Link>
           </div>
-        </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              background: "var(--accent)",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              padding: "12px",
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+              transition: "background 150ms, transform 150ms",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            {loading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <>
+                Sign in <ArrowRight size={14} />
+              </>
+            )}
+          </button>
+        </form>
+
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: 24,
+            fontSize: 14,
+            color: "var(--text-2)",
+          }}
+        >
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            style={{
+              color: "var(--accent)",
+              fontWeight: 500,
+            }}
+          >
+            Sign up
+          </Link>
+          <span style={{ marginLeft: 4 }}>
+            {" "}or use Google button above to sign in instantly.
+          </span>
+        </p>
+
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: 20,
+            fontSize: 12,
+            color: "#52525B",
+          }}
+        >
+          By continuing you agree to our Terms and Privacy Policy
+        </p>
       </div>
     </div>
   );
@@ -154,3 +456,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
