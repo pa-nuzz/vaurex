@@ -117,53 +117,158 @@ export default function LandingClient() {
           />
          
         <motion.div style={{ y: heroY, opacity: heroOpacity, position: "relative", zIndex: 1 }}>
-          <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center", padding: "0 24px" }}>
-            <div className="badge-accent" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 24, fontSize: 12 }}>
-              <Sparkles size={12} /> AI Document Intelligence Platform
-            </div>
+          <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }} className="hero-grid">
 
-            <h1 className="font-display" style={{
-              fontSize: "clamp(40px, 6vw, 72px)", fontWeight: 800, lineHeight: 1.08,
-              color: "var(--text-primary)", marginBottom: 20, letterSpacing: "-0.02em",
-            }}>
-              Know what&apos;s in your<br />
-              <span style={{
-                background: "linear-gradient(135deg, var(--accent-primary), var(--blue))",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            {/* ── Left: copy ── */}
+            <div>
+              <div className="badge-accent" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 24, fontSize: 12 }}>
+                <Sparkles size={12} /> AI Document Intelligence Platform
+              </div>
+
+              <h1 className="font-display" style={{
+                fontSize: "clamp(36px, 4.5vw, 60px)", fontWeight: 800, lineHeight: 1.08,
+                color: "var(--text-primary)", marginBottom: 20, letterSpacing: "-0.02em",
               }}>
-                documents
-              </span>
-            </h1>
+                Know exactly<br />
+                what&apos;s in your{" "}
+                <span style={{
+                  background: "linear-gradient(135deg, var(--accent-primary), var(--blue))",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                }}>
+                  documents
+                </span>
+              </h1>
 
-            <p style={{ fontSize: 18, color: "var(--text-secondary)", maxWidth: 560, margin: "0 auto 36px", lineHeight: 1.7 }}>
-              Drop any PDF, image, or screenshot. Get an instant AI intelligence report — risk scoring, entity extraction, and executive summary.
-            </p>
+              <p style={{ fontSize: 17, color: "var(--text-secondary)", maxWidth: 480, marginBottom: 36, lineHeight: 1.7 }}>
+                Drop any PDF, image, or screenshot. Get an instant AI intelligence report — risk scoring, entity extraction, and an executive summary ready to act on.
+              </p>
 
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-              <Link href="/register" className="btn-primary" style={{ padding: "14px 28px", fontSize: 15 }}>
-                Start free <ArrowRight size={15} />
-              </Link>
-              <a href="#demo" className="btn-ghost" style={{ padding: "14px 28px", fontSize: 15, transition: "all 0.2s" }} 
-                 onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--blue)"} 
-                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"}>
-                See it in action <ChevronRight size={15} />
-              </a>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
+                <Link href="/register" className="btn-primary" style={{ padding: "14px 28px", fontSize: 15 }}>
+                  Start free <ArrowRight size={15} />
+                </Link>
+                <a href="#demo" className="btn-ghost" style={{ padding: "14px 28px", fontSize: 15 }}
+                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--blue)"}
+                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"}>
+                  See it in action <ChevronRight size={15} />
+                </a>
+              </div>
+
+              {/* Trust bar */}
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                {[
+                  { icon: Shield, label: "SOC 2 Ready" },
+                  { icon: Globe,  label: "Multi-model AI" },
+                  { icon: Clock,  label: "Results in seconds" },
+                ].map((t, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <t.icon size={14} color="var(--text-muted)" />
+                    <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Trust bar */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 32, marginTop: 48, flexWrap: "wrap" }}>
-              {[
-                { icon: Shield, label: "SOC 2 Ready" },
-                { icon: Globe,  label: "Multi-model AI" },
-                { icon: Clock,  label: "Results in seconds" },
-              ].map((t, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <t.icon size={14} color="var(--text-muted)" />
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{t.label}</span>
+            {/* ── Right: product preview card ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.9, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+              style={{
+                background: "var(--bg-surface)",
+                border: "1px solid var(--border-primary)",
+                borderRadius: 20,
+                overflow: "hidden",
+                boxShadow: "0 24px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)",
+              }}
+            >
+              {/* Card header */}
+              <div style={{
+                padding: "14px 18px",
+                borderBottom: "1px solid var(--border-primary)",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: "rgba(255,255,255,0.02)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileSearch size={14} color="var(--accent-primary)" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>contract_v3_final.pdf</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Scan complete · 1.2s</div>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div style={{
+                  padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+                  background: "rgba(239,68,68,0.12)", color: "#EF4444",
+                  border: "1px solid rgba(239,68,68,0.25)",
+                }}>
+                  HIGH RISK · 78
+                </div>
+              </div>
+
+              {/* Risk bar */}
+              <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-primary)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 12 }}>
+                  <span style={{ color: "var(--text-secondary)" }}>Risk Score</span>
+                  <span style={{ color: "#EF4444", fontWeight: 700 }}>78 / 100</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 99, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: "78%" }}
+                    transition={{ duration: 1.1, delay: 0.6, ease: "easeOut" }}
+                    style={{ height: "100%", borderRadius: 99, background: "linear-gradient(90deg, #F59E0B, #EF4444)" }}
+                  />
+                </div>
+              </div>
+
+              {/* Entities */}
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border-primary)" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10, letterSpacing: "0.06em", textTransform: "uppercase" }}>Entities Detected</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {[
+                    { label: "Nexus Holdings Ltd", type: "ORG" },
+                    { label: "$4.2M transfer", type: "FIN" },
+                    { label: "James Crowley", type: "PER" },
+                    { label: "offshore account", type: "RISK" },
+                  ].map((e, i) => (
+                    <span key={i} style={{
+                      padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                      background: e.type === "RISK" ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.06)",
+                      color: e.type === "RISK" ? "#EF4444" : "var(--text-secondary)",
+                      border: `1px solid ${e.type === "RISK" ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.08)"}`,
+                    }}>{e.label}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div style={{ padding: "14px 18px" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginBottom: 8, letterSpacing: "0.06em", textTransform: "uppercase" }}>Executive Summary</div>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.65, margin: 0 }}>
+                  Document references an offshore account transfer of $4.2M linked to Nexus Holdings Ltd. Multiple high-risk financial clauses identified. <span style={{ color: "#EF4444", fontWeight: 600 }}>Recommend legal review before signing.</span>
+                </p>
+              </div>
+
+              {/* Powered by bar */}
+              <div style={{
+                padding: "10px 18px",
+                borderTop: "1px solid var(--border-primary)",
+                background: "rgba(255,255,255,0.01)",
+                display: "flex", alignItems: "center", gap: 6,
+              }}>
+                <Sparkles size={11} color="var(--accent-primary)" />
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Powered by Vaurex AI · GPT-4o + Claude 3.5</span>
+              </div>
+            </motion.div>
           </div>
+
+          <style>{`
+            @media (max-width: 820px) {
+              .hero-grid { grid-template-columns: 1fr !important; }
+            }
+          `}</style>
         </motion.div>
       </section>
 

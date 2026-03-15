@@ -38,6 +38,7 @@ function RegisterInner() {
   const [resendLoading, setResendLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [show, setShow] = useState(false);
+  const [isDuplicateEmail, setIsDuplicateEmail] = useState(false);
 
   useEffect(() => {
     const plan = searchParams.get("plan") as "free" | "pro" | null;
@@ -92,6 +93,7 @@ function RegisterInner() {
     }
     setLoading(true);
     setError("");
+    setIsDuplicateEmail(false);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -105,7 +107,16 @@ function RegisterInner() {
         },
       });
       if (error) {
-        setError(error.message);
+        const msg = error.message.toLowerCase();
+        if (
+          msg.includes("already registered") ||
+          msg.includes("already exists") ||
+          msg.includes("already taken")
+        ) {
+          setIsDuplicateEmail(true);
+        } else {
+          setError(error.message);
+        }
         return;
       }
 
@@ -365,6 +376,31 @@ function RegisterInner() {
             >
               Start shipping trusted document intelligence in minutes.
             </p>
+
+            {isDuplicateEmail && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  padding: 12,
+                  borderRadius: 8,
+                  marginBottom: 20,
+                  background: "rgba(245,158,11,0.1)",
+                  border: "1px solid rgba(245,158,11,0.25)",
+                  color: "var(--pro)",
+                  fontSize: 14,
+                }}
+              >
+                <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>
+                  An account with this email already exists.{" "}
+                  <Link href="/login" style={{ color: "var(--accent-primary)", fontWeight: 600, textDecoration: "underline" }}>
+                    Sign in instead →
+                  </Link>
+                </span>
+              </div>
+            )}
 
             {error && (
               <div

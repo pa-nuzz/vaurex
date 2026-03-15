@@ -109,6 +109,25 @@ async def verify_password_reset_code(payload: VerifyPasswordResetCodePayload, re
 async def complete_password_reset(payload: CompletePasswordResetPayload):
     email = (payload.email or "").strip().lower()
     code = (payload.code or "").strip()
+
+    # Validate code first without consuming it, so we can safely run the
+    # same-password check without burning the one-time code on a rejection.
+    if not verify_code(email, code):
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    # Reject if the new password is identical to the current one.
+    try:
+        check = supabase.auth.sign_in_with_password({"email": email, "password": payload.new_password})
+        if getattr(getattr(check, "user", None), "id", None):
+            raise HTTPException(
+                status_code=400,
+                detail="New password must be different from your current password",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # Sign-in failure means the passwords differ — proceed normally.
+
     user_id = consume_code(email, code)
     if not user_id:
         raise HTTPException(status_code=400, detail="Invalid or expired code")

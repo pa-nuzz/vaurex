@@ -795,9 +795,9 @@ export default function WorkbenchClient() {
             <button key={item.id} onClick={() => setActiveView(item.id)} style={{
               display: "flex", alignItems: "center", gap: 10, padding: sidebarCollapsed ? "10px" : "10px 12px",
               borderRadius: 10, border: "none", cursor: "pointer", transition: "all 0.15s", justifyContent: sidebarCollapsed ? "center" : "flex-start",
-              background: activeView === item.id ? (item.id === "chat" ? "var(--blue-dim)" : "rgba(255,90,31,0.1)") : "transparent",
+              background: activeView === item.id ? (item.id === "chat" ? "var(--blue-dim)" : "rgba(255,90,31,0.12)") : "transparent",
               color: activeView === item.id ? (item.id === "chat" ? "var(--blue)" : "var(--accent-primary)") : "var(--text-muted)",
-              borderLeft: activeView === item.id ? (item.id === "chat" ? "2px solid var(--blue)" : "2px solid var(--accent-primary)") : "2px solid transparent",
+              boxShadow: activeView === item.id ? `inset 0 0 0 1px ${item.id === "chat" ? "var(--blue-border)" : "var(--accent-border)"}` : "none",
             }}>
               <item.icon size={17} />
               {!sidebarCollapsed && (
@@ -989,9 +989,9 @@ export default function WorkbenchClient() {
                       { label: "Average Risk Score", value: countAvgRisk, subtitle: "Across completed scans", icon: BarChart3, color: "#3B82F6" },
                       { label: "High-Risk Share", value: countHighRisk, subtitle: "% of docs with risk > 50", icon: AlertTriangle, color: "#EF4444" },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "#2C2C2E", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 20, position: "relative", overflow: "hidden" }}>
-                        <div style={{ position: "absolute", top: 16, right: 16, color: s.color, opacity: 0.6 }}><s.icon size={20} /></div>
-                        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{s.label}</p>
+                      <div key={i} style={{ background: `linear-gradient(135deg, ${s.color}10, #1A1A1C)`, border: "1px solid rgba(255,255,255,0.06)", borderLeft: `3px solid ${s.color}`, borderRadius: 12, padding: 20, position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", top: 14, right: 14, color: s.color, opacity: 0.3 }}><s.icon size={22} /></div>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.07em" }}>{s.label}</p>
                         <p style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{s.value}</p>
                         <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{s.subtitle}</p>
                       </div>
