@@ -15,7 +15,7 @@ os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test.jwt.placeholder")
 
 @dataclass
 class _Result:
-    data: Anyy
+    data: Any
 
 
 class _Query:
