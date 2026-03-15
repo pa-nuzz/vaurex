@@ -10,7 +10,7 @@ from fastapi import Request
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.signature")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test.jwt.placeholder")
 
 
 @dataclass
