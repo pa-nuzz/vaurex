@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { apiJson } from "@/lib/api";
 
 type Step = "email" | "code" | "password" | "done";
@@ -55,17 +54,18 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
     try {
-      const supabase = createClient();
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: code.trim(),
-        type: "recovery",
-      });
-      if (verifyError) {
-        setError("Invalid or expired code. Please try again.");
-        return;
-      }
+      await apiJson(
+        "/api/v1/auth/password-reset/verify-code",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+        },
+        { fallbackMessage: "Invalid or expired code." },
+      );
       setStep("password");
+    } catch {
+      setError("Invalid or expired code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -85,16 +85,25 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError("");
     try {
-      const supabase = createClient();
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) {
-        setError(updateError.message);
-        return;
-      }
+      await apiJson(
+        "/api/v1/auth/password-reset/complete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            code: code.trim(),
+            new_password: password,
+          }),
+        },
+        { fallbackMessage: "Could not reset password." },
+      );
       setStep("done");
       setTimeout(() => {
         window.location.href = "/login";
       }, 1500);
+    } catch (completeError: unknown) {
+      setError(completeError instanceof Error ? completeError.message : "Could not reset password.");
     } finally {
       setLoading(false);
     }

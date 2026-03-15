@@ -1,8 +1,10 @@
 import logging
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from services.auth import get_current_user
+from services.password_reset_codes import consume_code, generate_code, store_code, verify_code
+from services.rate_limiter import GLOBAL_RATE_LIMITER
 from services.security import request_ip
 from services.supabase_client import supabase
 from services.support_mailer import send_login_alert_email, send_password_reset_code_email
@@ -17,6 +19,17 @@ class LoginNotificationPayload(BaseModel):
 
 class PasswordResetCodePayload(BaseModel):
     email: str
+
+
+class VerifyPasswordResetCodePayload(BaseModel):
+    email: str
+    code: str = Field(min_length=6, max_length=6)
+
+
+class CompletePasswordResetPayload(BaseModel):
+    email: str
+    code: str = Field(min_length=6, max_length=6)
+    new_password: str = Field(min_length=6, max_length=128)
 
 
 @router.post("/auth/login-notification")
@@ -46,26 +59,67 @@ async def login_notification(
 
 
 @router.post("/auth/password-reset/request-code")
-async def request_password_reset_code(payload: PasswordResetCodePayload):
+async def request_password_reset_code(payload: PasswordResetCodePayload, request: Request):
     email = (payload.email or "").strip().lower()
     if not email:
         return {"success": True, "sent": False}
 
+    ip_key = f"pwd-reset:request:ip:{request_ip(request)}"
+    allowed, retry_after, _, _ = GLOBAL_RATE_LIMITER.allow(ip_key, 8, 60)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many reset requests. Retry in {retry_after}s")
+
+    email_key = f"pwd-reset:request:email:{email}"
+    allowed, retry_after, _, _ = GLOBAL_RATE_LIMITER.allow(email_key, 4, 900)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many reset requests for this email. Retry in {retry_after}s")
+
     try:
-        link_response = supabase.auth.admin.generate_link(
-            {
-                "type": "recovery",
-                "email": email,
-            }
-        )
-        code = link_response.properties.email_otp if link_response and link_response.properties else None
-        if code:
+        link_response = supabase.auth.admin.generate_link({"type": "recovery", "email": email})
+        user_id = getattr(getattr(link_response, "user", None), "id", None)
+        if user_id:
+            code = generate_code()
+            store_code(email, user_id, code)
             send_password_reset_code_email(email, code=code)
-            return {"success": True, "sent": True}
     except Exception as exc:
         logger.warning(
             "auth.password_reset_code_failed",
             extra={"email": email, "error": str(exc)},
         )
 
-    return {"success": True, "sent": False}
+    return {"success": True, "sent": True}
+
+
+@router.post("/auth/password-reset/verify-code")
+async def verify_password_reset_code(payload: VerifyPasswordResetCodePayload, request: Request):
+    email = (payload.email or "").strip().lower()
+    code = (payload.code or "").strip()
+
+    ip_key = f"pwd-reset:verify:ip:{request_ip(request)}"
+    allowed, retry_after, _, _ = GLOBAL_RATE_LIMITER.allow(ip_key, 20, 60)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many verification attempts. Retry in {retry_after}s")
+
+    if not verify_code(email, code):
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+    return {"success": True, "valid": True}
+
+
+@router.post("/auth/password-reset/complete")
+async def complete_password_reset(payload: CompletePasswordResetPayload):
+    email = (payload.email or "").strip().lower()
+    code = (payload.code or "").strip()
+    user_id = consume_code(email, code)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    try:
+        supabase.auth.admin.update_user_by_id(user_id, {"password": payload.new_password})
+    except Exception as exc:
+        logger.warning(
+            "auth.password_reset_complete_failed",
+            extra={"email": email, "user_id": user_id, "error": str(exc)},
+        )
+        raise HTTPException(status_code=500, detail="Failed to reset password")
+
+    return {"success": True}
