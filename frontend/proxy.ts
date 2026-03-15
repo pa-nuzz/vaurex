@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    const backendBase = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000").replace(/\/+$/, "");
+    const target = new URL(`${backendBase}${pathname}${search}`);
+    return NextResponse.rewrite(target);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,8 +33,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { pathname } = request.nextUrl;
-
   const authRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
   const protectedRoutes = ["/workbench", "/settings", "/support"];
 
