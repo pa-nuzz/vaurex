@@ -77,3 +77,24 @@ def send_login_alert_email(
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
+
+
+def send_password_reset_code_email(recipient: str, *, code: str) -> None:
+    if not is_support_email_enabled() or not recipient:
+        return
+
+    msg = EmailMessage()
+    msg["Subject"] = "Your Vaurex password reset code"
+    msg["From"] = SUPPORT_EMAIL
+    msg["To"] = recipient
+    msg.set_content(
+        "Use this 6-digit code to reset your Vaurex password:\n\n"
+        f"{code}\n\n"
+        "This code expires soon. If you did not request this, ignore this email.\n\n"
+        "— Vaurex Security"
+    )
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
