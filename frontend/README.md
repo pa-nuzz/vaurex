@@ -80,7 +80,17 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 # Analytics (Optional)
 NEXT_PUBLIC_GA_ID=your_google_analytics_id
+
+# Optional server/runtime values used by middleware (recommended in production)
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+BACKEND_URL=http://localhost:8000
 ```
+
+### Security Notes (Important)
+- Any variable prefixed with `NEXT_PUBLIC_` is exposed to browser code.
+- Never add `SUPABASE_SERVICE_ROLE_KEY` or other secret provider keys to frontend env files.
+- Keep all privileged keys only in backend environment configuration.
 
 ### Development
 

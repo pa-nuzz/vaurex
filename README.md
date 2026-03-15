@@ -158,7 +158,19 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Optional server/runtime values used by Next middleware
+# (recommended to set in production; do not expose service-role keys here)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
+BACKEND_URL=http://localhost:8080
 ```
+
+### Frontend Secret Safety Rules
+- Never place `SUPABASE_SERVICE_ROLE_KEY` (or any provider secret key) in frontend env files.
+- Any variable prefixed with `NEXT_PUBLIC_` is bundled to the browser and must be considered public.
+- Only use anon/public keys in the frontend; keep service-role and AI-provider keys in backend `.env` only.
+- Do not log access tokens or raw auth headers in browser console/network debugging helpers.
 
 ### Access Points
 
@@ -267,6 +279,12 @@ npm run test:a11y
 - CORS configuration
 - Regular dependency updates
 - Security audits
+
+### Frontend Exposure Checklist
+- Use only `NEXT_PUBLIC_SUPABASE_ANON_KEY` on the client.
+- Keep `SUPABASE_SERVICE_ROLE_KEY`, SMTP credentials, and AI API keys backend-only.
+- Ensure `.env`, `.env.*`, and local sqlite files are git-ignored.
+- Prefer generic UI error messages; avoid returning internal stack traces to users.
 
 ## 📧 Email Configuration
 

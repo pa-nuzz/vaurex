@@ -589,7 +589,7 @@ export default function WorkbenchClient() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [sessionToken, setSessionToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDrag] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -634,7 +634,7 @@ export default function WorkbenchClient() {
   const applySession = useCallback((session: import("@supabase/supabase-js").Session | null) => {
     if (!session) return;
 
-    setSessionToken(session.access_token);
+    setHasSession(true);
     const user = session.user;
     setProfile({
       id: user.id,
@@ -680,6 +680,7 @@ export default function WorkbenchClient() {
     })();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: import("@supabase/supabase-js").Session | null) => {
       if (event === "SIGNED_OUT") {
+        setHasSession(false);
         redirectToLogin();
         return;
       }
@@ -695,7 +696,7 @@ export default function WorkbenchClient() {
 
   /* History */
   const fetchHistory = useCallback(async () => {
-    if (!sessionToken) return;
+    if (!hasSession) return;
     try {
       const json = await apiJson<ScanResult[] | { data?: ScanResult[] }>(
         "/api/v1/scans",
@@ -709,13 +710,13 @@ export default function WorkbenchClient() {
       setHistory([]);
       setScanCount(0);
     }
-  }, [sessionToken]);
+  }, [hasSession]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   /* Quota */
   useEffect(() => {
-    if (!sessionToken) return;
+    if (!hasSession) return;
     (async () => {
       try {
         const quota = await apiJson<{
@@ -736,11 +737,11 @@ export default function WorkbenchClient() {
         // ignore quota errors on UI; fall back to scanCount
       }
     })();
-  }, [sessionToken]);
+  }, [hasSession]);
 
   /* Stats from API */
   const fetchStats = useCallback(async () => {
-    if (!sessionToken) return;
+    if (!hasSession) return;
     setStatsLoading(true);
     try {
       const res = await apiJson<{ success?: boolean; data?: { total_documents: number; average_risk: number; high_risk_share: number } }>(
@@ -763,7 +764,7 @@ export default function WorkbenchClient() {
     } finally {
       setStatsLoading(false);
     }
-  }, [sessionToken]);
+  }, [hasSession]);
 
   useEffect(() => {
     fetchStats();
@@ -820,7 +821,7 @@ export default function WorkbenchClient() {
 
   /* Poll */
   useEffect(() => {
-    if (!scanId || !sessionToken) return;
+    if (!scanId || !hasSession) return;
     pollStartRef.current = Date.now();
     pollRef.current = setInterval(async () => {
       try {
@@ -846,7 +847,7 @@ export default function WorkbenchClient() {
       } catch { /* keep polling */ }
     }, 2000);
     return () => clearInterval(pollRef.current);
-  }, [scanId, fetchHistory, fetchStats, router, supabase, sessionToken]);
+  }, [scanId, fetchHistory, fetchStats, router, supabase, hasSession]);
 
   /* Upload */
   async function handleUpload() {
@@ -918,7 +919,11 @@ export default function WorkbenchClient() {
   }
 
   function onDrop(e: React.DragEvent) { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) setFile(f); }
-  async function signOut() { await supabase.auth.signOut(); router.push("/"); }
+  async function signOut() {
+    setHasSession(false);
+    await supabase.auth.signOut();
+    router.push("/");
+  }
 
   async function handleSendChat() {
     const message = chatInput.trim();
