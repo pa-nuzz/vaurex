@@ -2,523 +2,1120 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { apiFetch, apiJson, safeUiError } from "@/lib/api";
 import {
   Upload, FileText, Loader2, CheckCircle, AlertTriangle, XCircle,
   Sparkles, LogOut, Clock, ChevronRight, BarChart3, Users, FileSearch,
-  AlertCircle, Shield, Trash2, RefreshCw,
+  AlertCircle, Shield, Trash2, RefreshCw, Download, Settings,
+  TrendingUp, MessageSquare, Lock, X, Home, History,
+  Crown, HelpCircle, ChevronDown, Send, Zap, Star, Bell,
 } from "lucide-react";
 
-/* ── Types ── */
-interface Entity {
-  type: string;
-  value: string;
-  context?: string;
-}
+/* ─── Types ─────────────────────────────────────────────────────────────── */
+interface Entity { type: string; value: string; context?: string; }
 interface ScanResult {
-  id: string;
-  filename: string;
+  id: string; filename: string;
   status: "processing" | "done" | "error" | "failed" | "failure";
-  risk_score?: number;
-  risk_label?: string;
-  summary?: string;
-  entities?: Entity[];
-  flags?: string[];
-  error_message?: string;
-  created_at: string;
+  risk_score?: number; risk_label?: string; summary?: string;
+  entities?: Entity[]; flags?: string[]; error_message?: string; created_at: string;
+}
+interface ChatMessage { role: "user" | "assistant"; content: string; }
+interface UserProfile { id: string; email: string; name: string; avatar?: string; plan: "free" | "pro" | "pro_max"; }
+interface ChatApiResponse {
+  reply?: string;
+  answer?: string;
+  data?: {
+    reply?: string;
+    answer?: string;
+  };
 }
 
-/* ── Risk helpers ── */
-function riskColor(score: number) {
-  if (score <= 35) return "#10B981";
-  if (score <= 55) return "#F59E0B";
-  if (score <= 75) return "#EF4444";
-  return "#DC2626";
-}
-function riskLabel(score: number) {
-  if (score <= 15) return "Benign";
-  if (score <= 35) return "Low";
-  if (score <= 55) return "Medium";
-  if (score <= 75) return "High";
-  return "Critical";
+function getUserPlan(user: { user_metadata?: Record<string, unknown> | null; app_metadata?: Record<string, unknown> | null } | null | undefined): "free" | "pro" | "pro_max" {
+  if (!user) return "free";
+
+  const candidates = [
+    user.user_metadata?.plan,
+    user.user_metadata?.subscription_tier,
+    user.user_metadata?.tier,
+    user.app_metadata?.plan,
+    user.app_metadata?.subscription_tier,
+    user.app_metadata?.tier,
+  ];
+
+  const planString = candidates.find((value) => typeof value === "string")?.toLowerCase();
+  if (planString?.includes("pro_max") || planString?.includes("promax")) return "pro_max";
+  if (planString?.includes("pro")) return "pro";
+  return "free";
 }
 
-/* ── Risk Gauge SVG ── */
+const FREE_SCAN_LIMIT = 5;
+const FREE_CHAT_LIMIT = 6;
+const PROCESSING_STAGES = ["Uploading", "OCR extraction", "Entity recognition", "Risk assessment", "Generating report"];
+
+async function responseErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json();
+    const detail = body?.detail;
+    if (typeof detail === "string" && detail.trim()) return detail;
+    if (detail && typeof detail === "object") {
+      if (typeof detail.error === "string" && detail.error.trim()) return detail.error;
+      if (typeof detail.message === "string" && detail.message.trim()) return detail.message;
+    }
+  } catch {
+    // noop
+  }
+  return fallback;
+}
+
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
+function riskColor(s: number) { return s <= 25 ? "#10B981" : s <= 50 ? "#F59E0B" : s <= 75 ? "#EF4444" : "#DC2626"; }
+function riskBg(s: number) { return s <= 25 ? "rgba(16,185,129,0.08)" : s <= 50 ? "rgba(245,158,11,0.08)" : s <= 75 ? "rgba(239,68,68,0.08)" : "rgba(220,38,38,0.10)"; }
+function riskLabel(s: number) { return s <= 15 ? "Benign" : s <= 25 ? "Low" : s <= 50 ? "Medium" : s <= 75 ? "High" : "Critical"; }
+
+function formatDate(d: string) {
+  const date = new Date(d);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function useCountUp(target: number, duration = 1500): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (target === 0) {
+      setCount(0);
+      return;
+    }
+    const step = target / (duration / 16);
+    let current = 0;
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(current));
+      }
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration]);
+  return count;
+}
+
+/* ─── Avatar Component ───────────────────────────────────────────────────── */
+function Avatar({ profile, size = 32 }: { profile: UserProfile | null; size?: number }) {
+  if (profile?.avatar) {
+    return <Image src={profile.avatar} alt="profile" width={size} height={size} unoptimized style={{ borderRadius: "50%", objectFit: "cover" }} />;
+  }
+  const initials = profile?.name ? profile.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() : profile?.email?.[0]?.toUpperCase() || "U";
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, var(--accent-primary), #FF8C42)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.38, fontWeight: 700, color: "white", flexShrink: 0 }}>
+      {initials}
+    </div>
+  );
+}
+
+/* ─── Risk Gauge ─────────────────────────────────────────────────────────── */
 function RiskGauge({ score }: { score: number }) {
-  const r = 56, stroke = 8, circ = 2 * Math.PI * r;
-  const pct = Math.min(score, 100) / 100;
+  const r = 54, sw = 9, circ = 2 * Math.PI * r;
+  const pct = Math.min(Math.max(score, 0), 100) / 100;
   const color = riskColor(score);
   return (
-    <div style={{ position: "relative", width: 140, height: 140 }}>
-      <svg width="140" height="140" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="70" cy="70" r={r} fill="none" stroke="var(--border-secondary)" strokeWidth={stroke} />
-        <circle cx="70" cy="70" r={r} fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
-          strokeLinecap="round" style={{ transition: "stroke-dashoffset 1s ease" }} />
+    <div style={{ position: "relative", width: 136, height: 136 }}>
+      <svg width="136" height="136" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx="68" cy="68" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={sw} />
+        <circle cx="68" cy="68" r={r} fill="none" stroke={color} strokeWidth={sw}
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)} strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0.34,1.56,0.64,1)", filter: `drop-shadow(0 0 8px ${color}60)` }} />
       </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span className="font-display" style={{ fontSize: 32, fontWeight: 800, color, lineHeight: 1 }}>{score}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", marginTop: 4 }}>{riskLabel(score)}</span>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+        <span style={{ fontSize: 34, fontWeight: 800, color, lineHeight: 1, letterSpacing: "-0.03em" }}>{score}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{riskLabel(score)}</span>
       </div>
     </div>
   );
 }
 
-/* ── Entity group ── */
+/* ─── Entity Group ───────────────────────────────────────────────────────── */
 function EntityGroup({ entities }: { entities: Entity[] }) {
   const grouped: Record<string, Entity[]> = {};
   entities.forEach(e => { (grouped[e.type] ||= []).push(e); });
+  const colors: Record<string, string> = { PERSON: "#FF6B35", ORG: "#3B82F6", DATE: "#059669", MONEY: "#D97706", LOCATION: "#DB2777", LAW: "#DC2626", MISC: "#6B7280" };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {Object.entries(grouped).map(([type, items]) => (
-        <div key={type}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em",
-            color: "var(--accent-primary)", marginBottom: 6,
-          }}>{type}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {items.map((e, i) => (
-              <span key={i} className="badge-accent">{e.value}</span>
-            ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {Object.entries(grouped).map(([type, items]) => {
+        const col = colors[type] || "#6B7280";
+        return (
+          <div key={type}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: col }} />
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: col }}>{type}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({items.length})</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {items.map((e, i) => <span key={i} style={{ fontSize: 12, fontWeight: 500, padding: "3px 10px", borderRadius: 20, background: `${col}15`, color: col, border: `1px solid ${col}30` }}>{e.value}</span>)}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-export default function WorkbenchClient() {
-  const router   = useRouter();
-  const supabase = useMemo(() => createClient(), []);
-  const fileRef  = useRef<HTMLInputElement>(null);
+/* ─── Upgrade Modal ──────────────────────────────────────────────────────── */
+function UpgradeModal({ onClose, limitType }: { onClose: () => void; limitType: "scan" | "chat" }) {
+  const router = useRouter();
 
-  const [user, setUser]       = useState<{ id: string; email?: string } | null>(null);
-  const [file, setFile]       = useState<File | null>(null);
-  const [dragOver, setDrag]   = useState(false);
-  const [scanning, setScanning]     = useState(false);
-  const [scanId, setScanId]         = useState<string | null>(null);
-  const [result, setResult]         = useState<ScanResult | null>(null);
-  const [history, setHistory]       = useState<ScanResult[]>([]);
-  const [tab, setTab]               = useState<"scan" | "history">("scan");
-  const [error, setError]           = useState("");
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--accent-border)", borderRadius: 24, padding: 40, maxWidth: 480, width: "100%", boxShadow: "0 32px 80px rgba(0,0,0,0.6)", position: "relative" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}><X size={18} /></button>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ width: 60, height: 60, borderRadius: 18, margin: "0 auto 16px", background: "linear-gradient(135deg, var(--pro), #D97706)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px rgba(245,158,11,0.3)" }}>
+            <Crown size={26} color="white" />
+          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.02em" }}>
+            {limitType === "scan" ? "Scan limit reached" : "Chat limit reached"}
+          </h2>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+            {limitType === "scan" 
+              ? `You've used all ${FREE_SCAN_LIMIT} free scans. Go Pro for unlimited access.`
+              : `You've used all ${FREE_CHAT_LIMIT} free chats. Go Pro for unlimited access.`
+            }
+          </p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+          {["Unlimited document scans", "AI chat on every document", "Advanced entity & financial extraction", "PDF & JSON report downloads", "Priority AI pipeline (3x faster)", "Fraud & anomaly detection"].map((f, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--text-secondary)" }}>
+              <CheckCircle size={15} color="var(--pro)" style={{ flexShrink: 0 }} />{f}
+            </div>
+          ))}
+        </div>
+        <button onClick={() => router.push("/pricing")} className="btn-primary" style={{ width: "100%", padding: "14px", fontSize: 15, borderRadius: 12, background: "linear-gradient(135deg, var(--pro), #D97706)", boxShadow: "0 4px 16px rgba(245,158,11,0.3)" }}>
+          <Crown size={16} /> View Free vs Pro
+        </button>
+        <p style={{ marginTop: 12, fontSize: 12, lineHeight: 1.6, color: "var(--text-muted)", textAlign: "center" }}>
+          Billing setup is not connected to the backend yet, so Pro activation currently starts from the pricing page and support.
+        </p>
+        <button onClick={onClose} style={{ width: "100%", marginTop: 10, padding: "10px", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13 }}>Maybe later</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Scan Results ────────────────────────────────────────────────────────── */
+function ScanReport({ result, onDownload, downloading, onReset }: {
+  result: ScanResult; onDownload: (f: "json" | "text") => void;
+  downloading: boolean; onReset: () => void;
+}) {
+  const score = result.risk_score ?? 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Header */}
+      <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <CheckCircle size={14} color="var(--pro)" />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--cyan)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Analysis Complete</span>
+          </div>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{result.filename}</h2>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Analyzed {formatDate(result.created_at)}</p>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => onDownload("json")} disabled={downloading} className="btn-ghost" style={{ padding: "7px 12px", fontSize: 12, borderRadius: 8, border: "1px solid var(--border-primary)" }}><Download size={12} /> JSON</button>
+          <button onClick={() => onDownload("text")} disabled={downloading} className="btn-ghost" style={{ padding: "7px 12px", fontSize: 12, borderRadius: 8, border: "1px solid var(--border-primary)" }}><FileText size={12} /> Text</button>
+          <button onClick={onReset} className="btn-primary" style={{ padding: "7px 14px", fontSize: 12, borderRadius: 8 }}><Upload size={12} /> New Scan</button>
+        </div>
+      </div>
+
+      {/* Risk + Summary grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }} className="report-top">
+        <div style={{ background: riskBg(score), border: `1px solid ${riskColor(score)}25`, borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <RiskGauge score={score} />
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: riskColor(score) }}>
+            {result.risk_label || riskLabel(score)} Risk
+          </span>
+        </div>
+        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <BarChart3 size={14} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Executive Summary</h3>
+          </div>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.85, whiteSpace: "pre-wrap" }}>{result.summary || "No summary available."}</p>
+        </div>
+      </div>
+
+      {/* Entities */}
+      {result.entities && result.entities.length > 0 && (
+        <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <Users size={14} color="var(--accent-primary)" />
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Extracted Entities</h3>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 2 }}>({result.entities.length})</span>
+          </div>
+          <EntityGroup entities={result.entities} />
+        </div>
+      )}
+
+      {/* Risk Flags */}
+      {result.flags && result.flags.length > 0 && (
+        <div style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)", borderRadius: 16, padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <Shield size={14} color="#EF4444" />
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Risk Flags</h3>
+            <span style={{ fontSize: 11, color: "#EF4444", marginLeft: 2 }}>({result.flags.length})</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {result.flags.map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 14px", borderRadius: 10, background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)" }}>
+                <AlertTriangle size={13} color="#EF4444" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>{typeof f === "string" ? f : JSON.stringify(f)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Feedback */}
+      <FeedbackWidget scanId={result.id} />
+
+      <style>{`@media(max-width:640px){.report-top{grid-template-columns:1fr !important}}`}</style>
+    </div>
+  );
+}
+
+/* ─── Feedback Widget ─────────────────────────────────────────────────────── */
+function FeedbackWidget({ scanId }: { scanId: string }) {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState("");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function submit() {
+    if (!rating) return;
+    setSending(true);
+    try {
+      await apiJson(
+        "/api/v1/support",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+          subject: `Analysis Feedback — Scan ${scanId}`,
+          message: `Rating: ${rating}/5\nScan: ${scanId}\n\n${text || "No additional comments."}`,
+          name: "User Feedback",
+        }),
+        },
+        { auth: true, fallbackMessage: "Failed to submit feedback." },
+      );
+      setSent(true);
+    } catch { /* silent */ } finally { setSending(false); }
+  }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 12, cursor: "pointer", fontSize: 13, color: "var(--text-muted)", width: "fit-content", transition: "all 0.2s" }} onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--border-hover)")} onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border-primary)")}>
+      <Star size={14} /> Rate this analysis
+    </button>
+  );
+
+  return (
+    <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>Rate this analysis</h3>
+        <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}><X size={15} /></button>
+      </div>
+      {sent ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--cyan)", fontSize: 14 }}>
+          <CheckCircle size={16} /> Thanks for your feedback!
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+            {[1,2,3,4,5].map(s => (
+              <button key={s} onClick={() => setRating(s)} style={{ background: "none", border: "none", cursor: "pointer", padding: 2 }}>
+                <Star size={22} color={s <= rating ? "#F59E0B" : "var(--border-hover)"} fill={s <= rating ? "#F59E0B" : "transparent"} />
+              </button>
+            ))}
+          </div>
+          <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Optional: tell us what was accurate or off..." rows={3} style={{ width: "100%", background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: 10, padding: "9px 12px", color: "var(--text-primary)", fontSize: 13, resize: "vertical", fontFamily: "inherit", outline: "none", marginBottom: 12 }} />
+          <button onClick={submit} disabled={!rating || sending} className="btn-primary" style={{ padding: "9px 20px", fontSize: 13, borderRadius: 10, opacity: !rating ? 0.5 : 1 }}>
+            <Send size={13} /> {sending ? "Sending..." : "Send feedback"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Dashboard ─────────────────────────────────────────────────────── */
+export default function WorkbenchClient() {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [sessionToken, setSessionToken] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDrag] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanId, setScanId] = useState<string | null>(null);
+  const [result, setResult] = useState<ScanResult | null>(null);
+  const [history, setHistory] = useState<ScanResult[]>([]);
+  const [activeView, setActiveView] = useState<"scan" | "history" | "chat">("scan");
+  const [error, setError] = useState("");
+  const [scanCount, setScanCount] = useState(0);
+  const [dailyScansUsed, setDailyScansUsed] = useState(0);
+  const [dailyChatUsed, setDailyChatUsed] = useState(0);
+  const [showUpgrade, setShowUpgrade] = useState<{type:"scan"|"chat"}|false>(false);
+  const [downloading, setDownloading] = useState(false);
+  const [processingStage, setProcessingStage] = useState(0);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const [stats, setStats] = useState<{ total_documents: number; average_risk: number; high_risk_share: number } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
   const pollStartRef = useRef<number | null>(null);
 
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  const redirectToLogin = useCallback(() => {
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    const safePath = currentPath.startsWith("/") && !currentPath.startsWith("//") ? currentPath : "/workbench";
+    const nextPath = encodeURIComponent(safePath);
+    window.location.replace(`/login?next=${nextPath}`);
+  }, []);
+
+  const applySession = useCallback((session: import("@supabase/supabase-js").Session | null) => {
+    if (!session) {
+      // Add a small delay to avoid immediate redirect loops
+      setTimeout(() => {
+        redirectToLogin();
+      }, 100);
+      return;
+    }
+
+    setSessionToken(session.access_token);
+    const user = session.user;
+    setProfile({
+      id: user.id,
+      email: user.email || "",
+      name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+      avatar: user.user_metadata?.avatar_url || undefined,
+      plan: getUserPlan(user),
+    });
+    setAuthLoading(false);
+  }, [redirectToLogin]);
 
   /* Auth */
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        router.push("/login");
-        return;
+    let active = true;
+    (async () => {
+      try {
+        // Quick session check
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!active) return;
+        
+        if (session) {
+          applySession(session);
+        } else {
+          // Try to refresh session
+          const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+          if (!active) return;
+          if (refreshedSession) {
+            applySession(refreshedSession);
+          } else {
+            // Only redirect if really no session after refresh
+            setTimeout(() => {
+              redirectToLogin();
+            }, 1000);
+          }
+        }
+      } catch (err) {
+        console.error("Auth error:", err);
+        if (!active) return;
+        setTimeout(() => {
+          redirectToLogin();
+        }, 1000);
       }
-      setUser({ id: user.id, email: user.email });
+    })();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e: string, session: import("@supabase/supabase-js").Session | null) => {
+      applySession(session);
     });
-  }, [router, supabase]);
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [applySession, redirectToLogin, supabase]);
 
-  /* Fetch history */
+  /* History */
   const fetchHistory = useCallback(async () => {
-    if (!user) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!sessionToken) return;
     try {
-      const res = await fetch(`${BACKEND}/scans`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) {
-        const scans = await res.json();
-        setHistory(scans);
-      }
-    } catch { /* silent */ }
-  }, [user, BACKEND]);
+      const json = await apiJson<ScanResult[] | { data?: ScanResult[] }>(
+        "/api/v1/scans",
+        {},
+        { auth: true, fallbackMessage: "Unable to load scan history." },
+      );
+      const scans: ScanResult[] = Array.isArray(json) ? json : (json?.data ?? []);
+      setHistory(scans);
+      setScanCount(scans.filter(s => s.status === "done").length);
+    } catch (error: unknown) {
+      setHistory([]);
+      setScanCount(0);
+    }
+  }, [sessionToken]);
 
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
-  /* Poll for results */
+  /* Quota */
   useEffect(() => {
-    if (!scanId || !user) return;
+    if (!sessionToken) return;
+    (async () => {
+      try {
+        const quota = await apiJson<{
+          scans_used: number;
+          scans_limit: number;
+          chat_used: number;
+          chat_limit: number;
+          resets_at: string | null;
+          plan: string;
+        }>("/api/v1/quota", {}, { auth: true, fallbackMessage: "Unable to load quota." });
+        if (typeof quota.scans_used === "number") {
+          setDailyScansUsed(quota.scans_used);
+        }
+        if (typeof quota.chat_used === "number") {
+          setDailyChatUsed(quota.chat_used);
+        }
+      } catch {
+        // ignore quota errors on UI; fall back to scanCount
+      }
+    })();
+  }, [sessionToken]);
 
+  /* Stats from API */
+  const fetchStats = useCallback(async () => {
+    if (!sessionToken) return;
+    setStatsLoading(true);
+    try {
+      const res = await apiJson<{ success?: boolean; data?: { total_documents: number; average_risk: number; high_risk_share: number } }>(
+        "/api/v1/scans/stats",
+        {},
+        { auth: true, fallbackMessage: "Unable to load stats." },
+      );
+      const data = res?.data;
+      if (data && typeof data.total_documents === "number") {
+        setStats({
+          total_documents: data.total_documents,
+          average_risk: data.average_risk ?? 0,
+          high_risk_share: data.high_risk_share ?? 0,
+        });
+      } else {
+        setStats(null);
+      }
+    } catch {
+      setStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [sessionToken]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  /* Close notification dropdown on outside click */
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handle = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener("click", handle);
+    return () => document.removeEventListener("click", handle);
+  }, [notifOpen]);
+
+  /* Processing animation */
+  useEffect(() => {
+    if (!scanning) { setProcessingStage(0); return; }
+    const iv = setInterval(() => setProcessingStage(p => Math.min(p + 1, PROCESSING_STAGES.length - 1)), 3500);
+    return () => clearInterval(iv);
+  }, [scanning]);
+
+  /* Poll */
+  useEffect(() => {
+    if (!scanId || !sessionToken) return;
     pollStartRef.current = Date.now();
-
     pollRef.current = setInterval(async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          clearInterval(pollRef.current);
-          setScanning(false);
-          setError("Session expired. Please sign in again.");
-          return;
-        }
-
-        const res = await fetch(`${BACKEND}/scans/${scanId}/poll`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-
-        if (!res.ok) {
-          if (res.status === 404) {
-            clearInterval(pollRef.current);
-            setScanning(false);
-            setError("Scan not found or access denied.");
-          }
-          return;
-        }
-
-        const data = await res.json();
+        if (!session) { clearInterval(pollRef.current); setScanning(false); setError("Session expired."); return; }
+        const res = await apiFetch(`/api/v1/scans/${scanId}/poll`, {}, { auth: true, timeoutMs: 20000 });
+        if (!res.ok) { if (res.status === 404) { clearInterval(pollRef.current); setScanning(false); setError("Scan not found."); } return; }
+        const json = await res.json();
+        const data: ScanResult = json?.data ?? json;
         const status = (data.status || "").toLowerCase();
-        const terminal = ["done", "error", "failed", "failure"].includes(status);
-
-        if (terminal) {
+        if (["done", "error", "failed", "failure"].includes(status)) {
           clearInterval(pollRef.current);
-          setResult({ ...data, status: status === "failure" ? "failed" : status });
           setScanning(false);
           fetchHistory();
-          return;
+          fetchStats();
+          if (status === "done") {
+            router.push(`/workbench/scan/${scanId}`);
+            return;
+          }
+          setResult({ ...data, status: status === "failure" ? "failed" : status as ScanResult["status"] });
         }
-
-        const startedAt = pollStartRef.current ?? Date.now();
-        if (Date.now() - startedAt > 180000) {
-          clearInterval(pollRef.current);
-          setScanning(false);
-          setError("Analysis timed out. Please try again.");
-        }
-      } catch {
-        // keep polling until timeout
-      }
+        if (Date.now() - (pollStartRef.current ?? Date.now()) > 180000) { clearInterval(pollRef.current); setScanning(false); setError("Analysis timed out."); }
+      } catch { /* keep polling */ }
     }, 2000);
-
     return () => clearInterval(pollRef.current);
-  }, [scanId, BACKEND, fetchHistory, supabase, user]);
+  }, [scanId, fetchHistory, fetchStats, router, supabase, sessionToken]);
 
   /* Upload */
   async function handleUpload() {
     if (!file) return;
-    setScanning(true); setError(""); setResult(null); setScanId(null);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setError("Session expired. Please sign in again."); setScanning(false); return; }
 
-    const form = new FormData();
+    // Check plan limits (free users only)
+    if (profile?.plan === "free" && dailyScansUsed >= FREE_SCAN_LIMIT) {
+      setShowUpgrade({type: "scan"}); 
+      return; 
+    }
+    
+    setScanning(true); 
+    setError(""); 
+    setResult(null); 
+    setScanId(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { 
+      setError("Session expired."); 
+      setScanning(false); 
+      return; 
+    }
+    const form = new FormData(); 
     form.append("file", file);
     try {
-      const res = await fetch(`${BACKEND}/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: form,
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Upload failed (${res.status})`);
+      const res = await apiFetch("/api/v1/upload", { method: "POST", body: form }, { auth: true, timeoutMs: 60000 });
+      if (!res.ok) throw new Error(await responseErrorMessage(res, `Upload failed (${res.status})`));
+      const json = await res.json();
+      const id = json?.data?.scan_id ?? json?.scan_id;
+      if (!id) throw new Error("No scan ID returned.");
+      setScanId(id);
+      if (profile?.plan === "free") {
+        setDailyScansUsed((prev) => prev + 1);
       }
-      const { scan_id } = await res.json();
-      setScanId(scan_id);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-      setScanning(false);
+    } catch (err: unknown) { 
+      setError(safeUiError(err, "Upload failed")); 
+      setScanning(false); 
     }
   }
 
-  /* Drag handlers */
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault(); setDrag(false);
-    const f = e.dataTransfer.files[0];
-    if (f) setFile(f);
+  /* Download */
+  async function downloadReport(format: "json" | "text") {
+    if (!result) return; setDownloading(true);
+    try {
+      const url = format === "json" ? `/api/v1/scans/${result.id}/download/report` : `/api/v1/scans/${result.id}/download/text`;
+      const res = await apiFetch(url, {}, { auth: true, timeoutMs: 30000 });
+      if (!res.ok) throw new Error(await responseErrorMessage(res, "Download failed"));
+      const fname = result.filename.replace(/\.[^.]+$/, "");
+      if (format === "json") {
+        const data = await res.json(); const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${fname}-report.json`; a.click();
+      } else {
+        const text = await res.text(); const blob = new Blob([text], { type: "text/plain" });
+        const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${fname}-text.txt`; a.click();
+      }
+    } catch (error: unknown) { setError(safeUiError(error, "Download failed.")); } finally { setDownloading(false); }
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    router.push("/login"); router.refresh();
+  /* Delete */
+  async function deleteScan(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      const response = await apiFetch(`/api/v1/scans/${id}`, { method: "DELETE" }, { auth: true, timeoutMs: 20000 });
+      if (!response.ok) throw new Error(await responseErrorMessage(response, "Delete failed."));
+      setHistory(prev => prev.filter(s => s.id !== id));
+      if (result?.id === id) setResult(null);
+    } catch (error: unknown) {
+      setError(safeUiError(error, "Delete failed."));
+    }
   }
+
+  function onDrop(e: React.DragEvent) { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) setFile(f); }
+  async function signOut() { await supabase.auth.signOut(); router.push("/"); }
+
+  const scansLeft = Math.max(0, FREE_SCAN_LIMIT - dailyScansUsed);
+  const isPro = profile?.plan === "pro" || profile?.plan === "pro_max";
+  const latestCompletedScan = history.find(scan => scan.status === "done");
+  const countTotal = useCountUp(stats?.total_documents ?? 0, 1200);
+  const countAvgRisk = useCountUp(Math.round(stats?.average_risk ?? 0), 1200);
+  const countHighRisk = useCountUp(Math.round(stats?.high_risk_share ?? 0), 1200);
+  const recentCompletions = history.filter(s => s.status === "done").slice(0, 5);
+
+  // Show clean loading state while auth resolves — prevents white flash
+  if (authLoading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg-base)" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: 36, height: 36, border: "3px solid rgba(255,255,255,0.08)", borderTop: "3px solid var(--accent-primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 14px" }} />
+          <p style={{ color: "#71717A", fontSize: 13 }}>Loading…</p>
+          <style>{`@keyframes typingBounce{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}`}</style>
+        </div>
+      </div>
+    );
+  }
+
+  const navItems = [
+    { id: "scan" as const, icon: Upload, label: "New Scan" },
+    { id: "history" as const, icon: History, label: "History", badge: history.length || undefined },
+    { id: "chat" as const, icon: MessageSquare, label: "AI Chat" },
+  ];
+  const accountItems = [
+    { icon: Settings, label: "Settings", action: () => router.push("/settings") },
+    { icon: HelpCircle, label: "Support", action: () => router.push("/support") },
+  ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", position: "relative", zIndex: 1 }}>
-      {/* ── Top Nav ── */}
-      <nav className="glass" style={{
-        position: "sticky", top: 0, zIndex: 40,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 24px", borderBottom: "1px solid var(--border-primary)",
-        borderRadius: 0,
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", overflow: "hidden" }}>
+      {showUpgrade && <UpgradeModal onClose={() => setShowUpgrade(false)} limitType={showUpgrade.type} />}
+
+      {/* ── Sidebar ── */}
+      <aside style={{
+        width: sidebarCollapsed ? 64 : 220, flexShrink: 0, transition: "width 0.2s ease",
+        background: "var(--bg-secondary)", borderRight: "1px solid var(--border-primary)",
+        display: "flex", flexDirection: "column", zIndex: 30,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-            background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))",
-          }}>
-            <Sparkles size={14} color="white" fill="white" />
+        {/* Logo */}
+        <div style={{ padding: "18px 16px", borderBottom: "1px solid var(--border-primary)", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Sparkles size={15} color="white" fill="white" />
           </div>
-          <span className="font-display" style={{ fontWeight: 800, fontSize: 16, color: "var(--text-primary)" }}>Vaurex</span>
-          <span className="badge-accent" style={{ marginLeft: 8 }}>Workbench</span>
+          {!sidebarCollapsed && <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.03em" }}>Vaurex</span>}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{user?.email}</span>
-          <button onClick={signOut} className="btn-ghost" style={{ padding: "6px 12px", fontSize: 12, gap: 6 }}>
-            <LogOut size={13} /> Sign out
+
+        {/* Nav */}
+        <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+          {navItems.map(item => (
+            <button key={item.id} onClick={() => setActiveView(item.id)} style={{
+              display: "flex", alignItems: "center", gap: 10, padding: sidebarCollapsed ? "10px" : "10px 12px",
+              borderRadius: 10, border: "none", cursor: "pointer", transition: "all 0.15s", justifyContent: sidebarCollapsed ? "center" : "flex-start",
+              background: activeView === item.id ? (item.id === "chat" ? "var(--blue-dim)" : "rgba(255,90,31,0.1)") : "transparent",
+              color: activeView === item.id ? (item.id === "chat" ? "var(--blue)" : "var(--accent-primary)") : "var(--text-muted)",
+              borderLeft: activeView === item.id ? (item.id === "chat" ? "2px solid var(--blue)" : "2px solid var(--accent-primary)") : "2px solid transparent",
+            }}>
+              <item.icon size={17} />
+              {!sidebarCollapsed && (
+                <span style={{ fontSize: 13, fontWeight: activeView === item.id ? 700 : 500, flex: 1, textAlign: "left" }}>{item.label}</span>
+              )}
+              {!sidebarCollapsed && item.badge ? (
+                <span style={{ fontSize: 10, fontWeight: 700, background: "var(--accent-surface)", color: "var(--accent-primary)", border: "1px solid var(--accent-border)", borderRadius: 99, padding: "1px 6px" }}>{item.badge}</span>
+              ) : null}
+            </button>
+          ))}
+
+          <div style={{ marginTop: 8, marginBottom: 4, padding: "0 4px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", opacity: sidebarCollapsed ? 0 : 1, transition: "opacity 0.2s" }}>Account</div>
+
+          {accountItems.map((item, index) => (
+            <button key={index} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: 10, padding: sidebarCollapsed ? "10px" : "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: "transparent", color: "var(--text-muted)", transition: "all 0.15s", justifyContent: sidebarCollapsed ? "center" : "flex-start", borderLeft: "2px solid transparent" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")} onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+              <item.icon size={17} />
+              {!sidebarCollapsed && <span style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</span>}
+            </button>
+          ))}
+        </nav>
+
+        {/* Plan badge + profile */}
+        <div style={{ padding: "12px 10px", borderTop: "1px solid var(--border-primary)", display: "flex", flexDirection: "column", gap: 8 }}>
+          {!sidebarCollapsed && !isPro && (
+            <button onClick={() => setShowUpgrade({type: "scan"})} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.08))", border: "1px solid rgba(245,158,11,0.3)", cursor: "pointer", width: "100%" }}>
+              <Crown size={14} color="var(--pro)" />
+              <div style={{ flex: 1, textAlign: "left" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B" }}>Upgrade to Pro</div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{scansLeft} scan{scansLeft !== 1 ? "s" : ""} left</div>
+              </div>
+            </button>
+          )}
+          {!sidebarCollapsed && isPro && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(217,119,6,0.06))", border: "1px solid rgba(245,158,11,0.25)" }}>
+              <Crown size={13} color="var(--pro)" />
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B" }}>Pro Account</span>
+            </div>
+          )}
+          <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px", borderRadius: 8, background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}>
+            <ChevronRight size={15} style={{ transform: sidebarCollapsed ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 0.2s" }} />
           </button>
         </div>
-      </nav>
+      </aside>
 
-      {/* ── Tab Bar ── */}
-      <div style={{
-        display: "flex", gap: 0, maxWidth: 900, margin: "24px auto 0", padding: "0 24px",
-      }}>
-        {(["scan", "history"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: "12px 0", fontSize: 14, fontWeight: 600, cursor: "pointer",
-            background: "none", border: "none", borderBottom: `2px solid ${tab === t ? "var(--accent-primary)" : "var(--border-primary)"}`,
-            color: tab === t ? "var(--text-primary)" : "var(--text-muted)",
-            transition: "all 0.2s",
-          }}>
-            {t === "scan" ? "New Scan" : "History"}
-          </button>
-        ))}
-      </div>
+      {/* ── Main area ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Top navbar */}
+        <header style={{ height: 56, flexShrink: 0, borderBottom: "1px solid var(--border-primary)", background: "var(--bg-secondary)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", gap: 16 }}>
+          <div>
+            <h1 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+              {activeView === "scan" ? "New Scan" : activeView === "history" ? "Scan History" : "AI Chat"}
+            </h1>
+            <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
+              {activeView === "scan" ? "Upload a document to analyze" : activeView === "history" ? `${history.length} document${history.length !== 1 ? "s" : ""} scanned` : "Chat with AI about your documents"}
+            </p>
+          </div>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px 80px" }}>
-        {tab === "scan" ? (
-          <>
-            {/* ── Upload Zone ── */}
-            {!scanning && !result && (
-              <div
-                onDragOver={e => { e.preventDefault(); setDrag(true); }}
-                onDragLeave={() => setDrag(false)}
-                onDrop={onDrop}
-                onClick={() => fileRef.current?.click()}
-                className="card-glow"
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  textAlign: "center", minHeight: 260, cursor: "pointer",
-                  borderStyle: "dashed",
-                  borderColor: dragOver ? "var(--accent-primary)" : file ? "var(--cyan-border)" : "var(--accent-border)",
-                  background: dragOver ? "var(--accent-surface)" : file ? "var(--cyan-surface)" : "var(--bg-secondary)",
-                  transition: "all 0.2s",
-                }}
-              >
-                <input ref={fileRef} type="file" hidden accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff"
-                  onChange={e => { if (e.target.files?.[0]) setFile(e.target.files[0]); }} />
-
-                {file ? (
-                  <>
-                    <div style={{
-                      width: 56, height: 56, borderRadius: 14, marginBottom: 16,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "var(--cyan-surface)", border: "1.5px solid var(--cyan-border)",
-                    }}>
-                      <FileText size={24} color="var(--cyan)" />
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* Notification bell */}
+            <div ref={notifRef} style={{ position: "relative" }}>
+              <button onClick={() => setNotifOpen(!notifOpen)} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 10, background: notifOpen ? "var(--blue-dim)" : "transparent", border: "1px solid " + (notifOpen ? "var(--blue-border)" : "var(--border-primary)"), cursor: "pointer", color: notifOpen ? "var(--blue)" : "var(--text-muted)", transition: "all 0.15s" }} aria-label="Notifications">
+                <Bell size={18} />
+              </button>
+              {notifOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "#2C2C2E", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, boxShadow: "0 24px 48px rgba(0,0,0,0.4)", width: 320, padding: 16, zIndex: 100 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>Notifications</div>
+                  {recentCompletions.length === 0 ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", color: "var(--text-muted)", fontSize: 13 }}>
+                      <Bell size={16} style={{ flexShrink: 0 }} />
+                      No new notifications
                     </div>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>{file.name}</p>
-                    <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
-                      {(file.size / 1024).toFixed(0)} KB
-                    </p>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button onClick={(e) => { e.stopPropagation(); handleUpload(); }} className="btn-primary" style={{ padding: "10px 24px" }}>
-                        Scan document <Sparkles size={14} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="btn-ghost" style={{ padding: "10px 16px" }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{
-                      width: 56, height: 56, borderRadius: 14, marginBottom: 16,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "var(--accent-surface)", border: "1.5px dashed var(--accent-border)",
-                    }}>
-                      <Upload size={24} color="var(--accent-primary)" />
-                    </div>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>
-                      Drop a document here or click to browse
-                    </p>
-                    <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                      PDF, PNG, JPG, WEBP — up to 20 MB
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* ── Error ── */}
-            {error && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10, padding: 14, borderRadius: 12, marginTop: 16,
-                background: "rgba(239,68,68,0.08)", border: "1.5px solid rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 14,
-              }}>
-                <AlertCircle size={16} style={{ flexShrink: 0 }} />{error}
-              </div>
-            )}
-
-            {/* ── Scanning ── */}
-            {scanning && !result && (
-              <div className="card-glow" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", minHeight: 260, marginTop: 0 }}>
-                <div className="animate-pulse-ring" style={{
-                  width: 56, height: 56, borderRadius: 14, marginBottom: 20,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: "var(--accent-surface)",
-                }}>
-                  <Loader2 size={24} color="var(--accent-primary)" className="animate-spin" />
-                </div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>
-                  Analyzing document...
-                </p>
-                <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                  AI pipeline is running — this usually takes 10–20 seconds.
-                </p>
-              </div>
-            )}
-
-            {/* ── Results ── */}
-            {result && result.status === "done" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 0 }}>
-                {/* Header */}
-                <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                      <CheckCircle size={16} color="var(--cyan)" />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--cyan)" }}>Analysis complete</span>
-                    </div>
-                    <h2 className="font-display" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
-                      {result.filename}
-                    </h2>
-                  </div>
-                  <button onClick={() => { setResult(null); setFile(null); setScanId(null); }} className="btn-primary" style={{ padding: "10px 20px" }}>
-                    <RefreshCw size={14} /> New scan
-                  </button>
-                </div>
-
-                {/* Risk + Summary grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 20 }} className="results-grid">
-                  {/* Risk gauge */}
-                  <div className="card" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 200 }}>
-                    <RiskGauge score={result.risk_score ?? 0} />
-                    <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: riskColor(result.risk_score ?? 0), textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      {result.risk_label || riskLabel(result.risk_score ?? 0)} Risk
-                    </div>
-                  </div>
-
-                  {/* Summary */}
-                  <div className="card">
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                      <BarChart3 size={16} color="var(--accent-primary)" />
-                      <h3 className="font-display" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Executive Summary</h3>
-                    </div>
-                    <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-                      {result.summary || "No summary available."}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Entities */}
-                {result.entities && result.entities.length > 0 && (
-                  <div className="card">
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                      <Users size={16} color="var(--accent-primary)" />
-                      <h3 className="font-display" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
-                        Extracted Entities ({result.entities.length})
-                      </h3>
-                    </div>
-                    <EntityGroup entities={result.entities} />
-                  </div>
-                )}
-
-                {/* Flags */}
-                {result.flags && result.flags.length > 0 && (
-                  <div className="card" style={{ borderColor: "rgba(239,68,68,0.15)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                      <Shield size={16} color="#EF4444" />
-                      <h3 className="font-display" style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
-                        Risk Flags ({result.flags.length})
-                      </h3>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {result.flags.map((f, i) => (
-                        <div key={i} style={{
-                          display: "flex", alignItems: "flex-start", gap: 10, padding: 12, borderRadius: 10,
-                          background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)",
-                        }}>
-                          <AlertTriangle size={14} color="#EF4444" style={{ flexShrink: 0, marginTop: 2 }} />
-                          <span style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6 }}>{f}</span>
-                        </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {recentCompletions.map(scan => (
+                        <button key={scan.id} onClick={() => { setNotifOpen(false); router.push(`/workbench/scan/${scan.id}`); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: "none", border: "none", cursor: "pointer", textAlign: "left", width: "100%", transition: "background 0.15s" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                          <FileText size={14} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scan.filename}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Scan complete · {formatDate(scan.created_at)}</div>
+                          </div>
+                          {scan.risk_score != null && <span style={{ fontSize: 11, fontWeight: 700, color: riskColor(scan.risk_score) }}>{scan.risk_score}</span>}
+                        </button>
                       ))}
                     </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {!isPro && (
+              <button onClick={() => setShowUpgrade({type: "scan"})} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 99, background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.1))", border: "1px solid rgba(245,158,11,0.3)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#F59E0B" }}>
+                <Crown size={12} /> Upgrade
+              </button>
+            )}
+            {isPro && <span style={{ fontSize: 11, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", padding: "3px 10px", borderRadius: 99 }}>✦ Pro</span>}
+
+            {/* Profile dropdown */}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setProfileMenuOpen(!profileMenuOpen)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px 4px 4px", borderRadius: 99, background: profileMenuOpen ? "rgba(255,255,255,0.06)" : "transparent", border: "1px solid " + (profileMenuOpen ? "var(--border-hover)" : "var(--border-primary)"), cursor: "pointer", transition: "all 0.15s" }}>
+                <Avatar profile={profile} size={28} />
+                {profile && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</span>}
+                <ChevronDown size={13} color="var(--text-muted)" style={{ transform: profileMenuOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+              </button>
+
+              {profileMenuOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 14, padding: 8, minWidth: 200, boxShadow: "0 16px 48px rgba(0,0,0,0.4)", zIndex: 100 }}>
+                  <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-primary)", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Avatar profile={profile} size={36} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{profile?.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{profile?.email}</div>
+                      </div>
+                    </div>
+                    {isPro && <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", padding: "2px 8px", borderRadius: 99 }}><Crown size={10} /> Pro</div>}
+                  </div>
+                  {[
+                    { label: "Account Settings", icon: Settings, action: () => { router.push("/settings"); setProfileMenuOpen(false); } },
+                    { label: "Pricing", icon: Crown, action: () => { router.push("/pricing"); setProfileMenuOpen(false); } },
+                    { label: "Support", icon: HelpCircle, action: () => { router.push("/support"); setProfileMenuOpen(false); } },
+                  ].map((item, i) => (
+                    <button key={i} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 8, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--text-secondary)", transition: "background 0.15s", textAlign: "left" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                      <item.icon size={15} /> {item.label}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: "1px solid var(--border-primary)", marginTop: 6, paddingTop: 6 }}>
+                    <button onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 8, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#EF4444", transition: "background 0.15s", textAlign: "left" }} onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")} onMouseLeave={e => (e.currentTarget.style.background = "none")}>
+                      <LogOut size={15} /> Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Workbench mobile nav */}
+        <div className="workbench-mobile-nav" style={{ padding: "12px 16px 0", background: "var(--bg-primary)", display: "none" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 8 }}>
+            {navItems.map(item => (
+              <button key={item.id} onClick={() => setActiveView(item.id)} style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 12px",
+                borderRadius: 12, border: activeView === item.id ? "1px solid var(--accent-border)" : "1px solid var(--border-primary)",
+                background: activeView === item.id ? "rgba(255,90,31,0.1)" : "var(--bg-secondary)",
+                color: activeView === item.id ? "var(--accent-primary)" : "var(--text-secondary)",
+                fontSize: 12, fontWeight: 600,
+              }}>
+                <item.icon size={14} /> {item.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+            {accountItems.map((item, index) => (
+              <button key={index} onClick={item.action} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", borderRadius: 12, border: "1px solid var(--border-primary)", background: "var(--bg-secondary)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600 }}>
+                <item.icon size={14} /> {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Click outside to close profile menu */}
+        {profileMenuOpen && <div style={{ position: "fixed", inset: 0, zIndex: 50 }} onClick={() => setProfileMenuOpen(false)} />}
+
+        {/* Content */}
+        <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
+
+          {/* ── SCAN VIEW ── */}
+          {activeView === "scan" && (
+            <div style={{ maxWidth: 820, margin: "0 auto" }}>
+              {/* Stats row */}
+              <div style={{ marginBottom: 24 }}>
+                {statsLoading ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                    {[1, 2, 3].map(i => <div key={i} style={{ height: 88, background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 12, animation: "pulse 1.5s ease infinite" }} />)}
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                    {[
+                      { label: "Total Documents", value: countTotal, subtitle: "All time", icon: FileText, color: "#FF6B35" },
+                      { label: "Average Risk Score", value: countAvgRisk, subtitle: "Across completed scans", icon: BarChart3, color: "#3B82F6" },
+                      { label: "High-Risk Share", value: countHighRisk, subtitle: "% of docs with risk > 50", icon: AlertTriangle, color: "#EF4444" },
+                    ].map((s, i) => (
+                      <div key={i} style={{ background: "#2C2C2E", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 20, position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", top: 16, right: 16, color: s.color, opacity: 0.6 }}><s.icon size={20} /></div>
+                        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{s.label}</p>
+                        <p style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{s.value}</p>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>{s.subtitle}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                <style>{`
-                  @media (max-width: 640px) {
-                    .results-grid { grid-template-columns: 1fr !important; }
-                  }
-                `}</style>
               </div>
-            )}
+              {!scanning && !result && (
+              <div className="scan-intro-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(280px, 0.9fr)", gap: 20 }}>
+                  <div onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop} onClick={() => !file && fileRef.current?.click()}
+                    className="premium-card-hover"
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", minHeight: 320, cursor: file ? "default" : "pointer", borderRadius: 24, border: `2px dashed ${dragOver ? "var(--accent-primary)" : file ? "rgba(6,214,160,0.4)" : "var(--accent-border)"}`, background: dragOver ? "rgba(59,130,246,0.05)" : file ? "rgba(6,214,160,0.03)" : "linear-gradient(180deg, rgba(59,130,246,0.06), rgba(24,24,27,0.92))", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2)", boxShadow: file ? "0 0 0 1px rgba(6,214,160,0.12), 0 24px 80px rgba(6,214,160,0.06)" : "0 24px 80px rgba(59,130,246,0.08)" }}>
+                    <input ref={fileRef} type="file" hidden accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff" onChange={e => { if (e.target.files?.[0]) setFile(e.target.files[0]); }} />
+                    {file ? (
+                      <div style={{ padding: "0 24px" }}>
+                        <div style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,214,160,0.1)", border: "1.5px solid rgba(6,214,160,0.3)", boxShadow: "0 0 30px rgba(6,214,160,0.12)" }}><FileText size={26} color="var(--pro)" /></div>
+                        <p style={{ fontSize: 17, fontWeight: 800, color: "var(--text-primary)", marginBottom: 6, letterSpacing: "-0.02em" }}>{file.name}</p>
+                        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 22 }}>{(file.size / 1024 / 1024).toFixed(2)} MB · {file.type || "document"}</p>
+                        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                          <button onClick={e => { e.stopPropagation(); handleUpload(); }} className="btn-primary premium-card-hover" style={{ padding: "11px 28px", borderRadius: 12 }}><Zap size={15} /> Analyze document</button>
+                          <button onClick={e => { e.stopPropagation(); setFile(null); }} className="btn-ghost premium-card-hover" style={{ padding: "11px 14px", borderRadius: 12, border: "1px solid var(--border-primary)" }}><Trash2 size={15} /></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ width: 64, height: 64, borderRadius: 18, marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-surface)", border: "1.5px dashed var(--accent-border)", boxShadow: "0 0 30px rgba(255,90,31,0.08)" }}><Upload size={26} color="var(--accent-primary)" /></div>
+                        <div className="badge-accent" style={{ marginBottom: 12 }}>Document Intelligence Workbench</div>
+                        <p style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.03em" }}>Drop a document or click to browse</p>
+                        <p style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 380, lineHeight: 1.7 }}>PDF, PNG, JPG, WEBP, BMP, TIFF. Vaurex extracts entities, scores risk, and gives you a fast executive summary in one pass.</p>
+                      </>
+                    )}
+                  </div>
 
-            {/* ── Error Result ── */}
-            {result && ["error", "failed", "failure"].includes(result.status) && (
-              <div className="card" style={{ textAlign: "center", marginTop: 0 }}>
-                <XCircle size={32} color="#EF4444" style={{ margin: "0 auto 12px" }} />
-                <h3 className="font-display" style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
-                  Analysis failed
-                </h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 20 }}>
-                  {result.error_message || "An error occurred while processing the document."}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {!isPro && (
+                      <div style={{ marginBottom: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>
+                          <span>Daily scans</span>
+                          <span style={{ color: dailyScansUsed >= FREE_SCAN_LIMIT ? "var(--danger)" : "var(--text-muted)" }}>
+                            {dailyScansUsed}/{FREE_SCAN_LIMIT}
+                          </span>
+                        </div>
+                        <div style={{ height: 4, borderRadius: 2, background: "var(--border-primary)", overflow: "hidden" }}>
+                          <div
+                            style={{
+                              height: "100%",
+                              width: `${Math.min(100, (dailyScansUsed / FREE_SCAN_LIMIT) * 100)}%`,
+                              borderRadius: 2,
+                              background: dailyScansUsed >= FREE_SCAN_LIMIT ? "var(--danger)" : "var(--accent-primary)",
+                              transition: "width 0.4s ease",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="glass-panel" style={{ borderRadius: 20, padding: 20 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Workspace Status</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em", marginTop: 4 }}>{isPro ? "Pro pipeline ready" : `${scansLeft} free scan${scansLeft !== 1 ? "s" : ""} left`}</div>
+                        </div>
+                        <div style={{ width: 42, height: 42, borderRadius: 14, background: isPro ? "rgba(245,158,11,0.14)" : "rgba(6,214,160,0.12)", display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${isPro ? "rgba(245,158,11,0.25)" : "rgba(6,214,160,0.2)"}` }}>
+                          {isPro ? <Crown size={18} color="var(--pro)" /> : <Shield size={18} color="var(--cyan)" />}
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                        <div className="card-inset" style={{ padding: 14 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Formats</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>PDF, images, scans</div>
+                        </div>
+                        <div className="card-inset" style={{ padding: 14 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 6 }}>Pipeline</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>OCR + risk + chat</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                      <button onClick={() => setActiveView("history")} className="card-interactive" style={{ padding: 18, textAlign: "left", cursor: "pointer" }}>
+                        <History size={18} color="var(--accent-primary)" style={{ marginBottom: 10 }} />
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>Recent scans</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{history.length ? `${history.length} document${history.length !== 1 ? "s" : ""} in your history` : "No history yet"}</div>
+                      </button>
+                      <button onClick={() => router.push("/support")} className="card-interactive" style={{ padding: 18, textAlign: "left", cursor: "pointer" }}>
+                        <HelpCircle size={18} color="var(--pro)" style={{ marginBottom: 10 }} />
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>Need help?</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>Open support, FAQs, and contact options</div>
+                      </button>
+                    </div>
+
+                    <div className="card" style={{ padding: 20 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <MessageSquare size={16} color="var(--accent-primary)" />
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Latest activity</div>
+                      </div>
+                      {latestCompletedScan ? (
+                        <>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{latestCompletedScan.filename}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{formatDate(latestCompletedScan.created_at)} · Risk {latestCompletedScan.risk_score ?? "—"}</div>
+                          <button onClick={() => { setResult(latestCompletedScan); setActiveView("scan"); }} className="btn-ghost" style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid var(--border-primary)" }}>
+                            Open latest report <ChevronRight size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>Your next completed scan will appear here for quick reopen and follow-up chat.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 12, marginTop: 16, background: "rgba(239,68,68,0.08)", border: "1.5px solid rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 14 }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />{error}
+                  <button onClick={() => setError("")} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}><X size={14} /></button>
+                </div>
+              )}
+
+              {scanning && (
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 20, padding: 48, textAlign: "center" }}>
+                  <div style={{ width: 60, height: 60, borderRadius: 18, margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-surface)", animation: "pulseRing 2s ease infinite" }}>
+                    <Loader2 size={26} color="var(--accent-primary)" style={{ animation: "spin 0.8s linear infinite" }} />
+                  </div>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>{PROCESSING_STAGES[processingStage]}</p>
+                  <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 24 }}>Multi-model AI pipeline · Usually 10–20s</p>
+                  <div style={{ display: "flex", gap: 6, maxWidth: 280, margin: "0 auto 12px" }}>
+                    {PROCESSING_STAGES.map((_, i) => <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i <= processingStage ? "var(--accent-primary)" : "rgba(255,255,255,0.08)", transition: "background 0.4s", boxShadow: i <= processingStage ? "0 0 6px rgba(255,90,31,0.5)" : "none" }} />)}
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Step {processingStage + 1} of {PROCESSING_STAGES.length}</p>
+                </div>
+              )}
+
+              {result && result.status === "done" && (
+                <ScanReport result={result} onDownload={downloadReport} downloading={downloading} onReset={() => { setResult(null); setFile(null); setScanId(null); }} />
+              )}
+
+              {result && ["error", "failed", "failure"].includes(result.status) && (
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 20, padding: 48, textAlign: "center" }}>
+                  <XCircle size={40} color="#EF4444" style={{ margin: "0 auto 16px" }} />
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Analysis failed</h3>
+                  <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24, maxWidth: 400, margin: "0 auto 24px" }}>{result.error_message || "An error occurred. Please try again."}</p>
+                  <button onClick={() => { setResult(null); setFile(null); setScanId(null); }} className="btn-primary" style={{ padding: "10px 24px" }}>Try again</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── HISTORY VIEW ── */}
+          {activeView === "history" && (
+            <div style={{ maxWidth: 820, margin: "0 auto" }}>
+              {/* Stats */}
+              {history.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 24 }}>
+                  {[
+                    { label: "Total Scans", value: history.length, icon: FileSearch, color: "var(--accent-primary)" },
+                    { label: "Avg Risk", value: (() => { const d = history.filter(s => s.status === "done" && s.risk_score != null); return d.length ? Math.round(d.reduce((a, s) => a + (s.risk_score ?? 0), 0) / d.length) : "—"; })(), icon: TrendingUp, color: "var(--cyan)" },
+                    { label: "High Risk Docs", value: history.filter(s => (s.risk_score ?? 0) > 55).length, icon: AlertTriangle, color: "#EF4444" },
+                  ].map((s, i) => (
+                    <div key={i} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: `${s.color}15`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><s.icon size={17} color={s.color} /></div>
+                      <div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{s.value}</div><div style={{ fontSize: 11, color: "var(--text-muted)" }}>{s.label}</div></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {history.length === 0 ? (
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 20, padding: 60, textAlign: "center" }}>
+                  <Clock size={32} color="var(--text-muted)" style={{ margin: "0 auto 14px" }} />
+                  <p style={{ color: "var(--text-muted)", fontSize: 15, marginBottom: 18 }}>No scans yet. Start with your first document.</p>
+                  <button onClick={() => setActiveView("scan")} className="btn-primary" style={{ padding: "10px 24px" }}>New scan <ChevronRight size={14} /></button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {history.map(scan => (
+                    <div key={scan.id} onClick={() => { setResult(scan); setActiveView("scan"); }}
+                      style={{ display: "flex", alignItems: "center", gap: 14, background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 14, padding: "12px 16px", cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-hover)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-primary)"; (e.currentTarget as HTMLElement).style.transform = "none"; }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: scan.status === "done" ? "rgba(6,214,160,0.1)" : "rgba(239,68,68,0.08)", border: `1px solid ${scan.status === "done" ? "rgba(6,214,160,0.25)" : "rgba(239,68,68,0.2)"}` }}>
+                        {scan.status === "done" ? <FileSearch size={16} color="var(--pro)" /> : <XCircle size={16} color="#EF4444" />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scan.filename}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{formatDate(scan.created_at)} · {scan.status}</div>
+                      </div>
+                      {scan.status === "done" && scan.risk_score != null && (
+                        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 8, minWidth: 100 }}>
+                          <div style={{ flex: 1, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${scan.risk_score}%`, background: riskColor(scan.risk_score), borderRadius: 99 }} />
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: riskColor(scan.risk_score), minWidth: 22 }}>{scan.risk_score}</span>
+                        </div>
+                      )}
+                      <button onClick={e => deleteScan(scan.id, e)} style={{ opacity: 0.4, background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: 4, borderRadius: 6, transition: "opacity 0.15s", flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.opacity = "1")} onMouseLeave={e => (e.currentTarget.style.opacity = "0.4")}>
+                        <Trash2 size={13} />
+                      </button>
+                      <ChevronRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── CHAT VIEW ── */}
+          {activeView === "chat" && (
+            <div style={{ maxWidth: 720, margin: "0 auto", height: "calc(100vh - 56px - 48px)" }}>
+              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>AI Chat</h3>
+                <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                  Document chat is currently available from scan details. Open a completed scan from History to ask contextual questions.
                 </p>
-                <button onClick={() => { setResult(null); setFile(null); setScanId(null); }} className="btn-primary" style={{ padding: "10px 20px" }}>
-                  Try again
-                </button>
               </div>
-            )}
-          </>
-        ) : (
-          /* ── History Tab ── */
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {history.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: 48 }}>
-                <Clock size={28} color="var(--text-muted)" style={{ margin: "0 auto 12px" }} />
-                <p style={{ color: "var(--text-muted)", fontSize: 15 }}>No scans yet. Run your first scan!</p>
-                <button onClick={() => setTab("scan")} className="btn-primary" style={{ marginTop: 20, padding: "10px 24px" }}>
-                  New scan <ChevronRight size={14} />
-                </button>
-              </div>
-            ) : (
-              history.map((scan) => (
-                <button
-                  key={scan.id}
-                  onClick={() => { setResult(scan); setTab("scan"); }}
-                  className="card-interactive"
-                  style={{ display: "flex", alignItems: "center", gap: 16, textAlign: "left", width: "100%", border: "1px solid var(--border-primary)" }}
-                >
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    background: scan.status === "done" ? "var(--cyan-surface)" : scan.status === "error" ? "rgba(239,68,68,0.08)" : "var(--accent-surface)",
-                    border: `1px solid ${scan.status === "done" ? "var(--cyan-border)" : scan.status === "error" ? "rgba(239,68,68,0.2)" : "var(--accent-border)"}`,
-                  }}>
-                    {scan.status === "done" ? <FileSearch size={18} color="var(--cyan)" /> :
-                     ["error", "failed", "failure"].includes(scan.status) ? <XCircle size={18} color="#EF4444" /> :
-                     <Loader2 size={18} color="var(--accent-primary)" className="animate-spin" />}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {scan.filename}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                      {new Date(scan.created_at).toLocaleDateString()} · {scan.status === "done" ? `Score: ${scan.risk_score}` : scan.status}
-                    </div>
-                  </div>
-                  {scan.status === "done" && scan.risk_score != null && (
-                    <div style={{
-                      fontSize: 18, fontWeight: 800, color: riskColor(scan.risk_score),
-                      fontFamily: "var(--font-sans)",
-                    }}>
-                      {scan.risk_score}
-                    </div>
-                  )}
-                  <ChevronRight size={16} color="var(--text-muted)" />
-                </button>
-              ))
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </main>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseRing { 0%{box-shadow:0 0 0 0 rgba(255,90,31,0.4)} 70%{box-shadow:0 0 0 16px rgba(255,90,31,0)} 100%{box-shadow:0 0 0 0 rgba(255,90,31,0)} }
+        @media(max-width:900px) { .scan-intro-grid { grid-template-columns: 1fr !important; } }
+        @media(max-width:640px) {
+          aside { display: none; }
+          .workbench-mobile-nav { display: block !important; }
+          main { padding: 16px !important; }
+        }
+      `}</style>
     </div>
   );
 }
