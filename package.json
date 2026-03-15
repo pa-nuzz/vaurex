@@ -2,15 +2,17 @@
   "name": "vaurex",
   "private": true,
   "scripts": {
-    "stop:dev": "./scripts/stop-dev-ports.sh",
-    "dev": "./scripts/start-frontend-dev.sh",
+    "dev": "concurrently -n backend,frontend -c cyan,magenta \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "npm --prefix frontend run build",
     "lint": "npm --prefix frontend run lint",
-    "dev:frontend": "./scripts/start-frontend-dev.sh",
-    "dev:backend": "./scripts/start-backend-dev.sh",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "cd backend && ./venv/bin/python -m uvicorn main:app --reload --port 8000",
     "build:frontend": "npm --prefix frontend run build",
     "lint:frontend": "npm --prefix frontend run lint",
     "test:backend": "cd backend && ./venv/bin/python -m pytest -q",
     "backend:test": "cd backend && ./venv/bin/python -m pytest -q"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

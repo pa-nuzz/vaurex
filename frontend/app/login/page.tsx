@@ -167,7 +167,7 @@ function LoginInner() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "var(--accent)",
+              background: "var(--accent-primary)",
             }}
           >
             <Shield size={20} color="white" />
@@ -187,7 +187,7 @@ function LoginInner() {
           style={{
             fontSize: 24,
             fontWeight: 700,
-            color: "var(--accent)",
+            color: "var(--accent-primary)",
             marginBottom: 8,
             textAlign: "center",
           }}
@@ -282,7 +282,7 @@ function LoginInner() {
                   transition: "border-color 150ms",
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = "var(--accent)";
+                  e.target.style.borderColor = "var(--accent-primary)";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = "rgba(255,255,255,0.1)";
@@ -336,7 +336,7 @@ function LoginInner() {
                   transition: "border-color 150ms",
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = "var(--accent)";
+                  e.target.style.borderColor = "var(--accent-primary)";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = "rgba(255,255,255,0.1)";
@@ -372,7 +372,7 @@ function LoginInner() {
               href="/forgot-password"
               style={{
                 fontSize: 13,
-                color: "var(--accent)",
+                color: "var(--accent-primary)",
                 fontWeight: 500,
               }}
             >
@@ -385,7 +385,7 @@ function LoginInner() {
             disabled={loading}
             style={{
               width: "100%",
-              background: "var(--accent)",
+              background: "var(--accent-orange)",
               color: "white",
               border: "none",
               borderRadius: 8,
@@ -423,7 +423,7 @@ function LoginInner() {
           <Link
             href="/register"
             style={{
-              color: "var(--accent)",
+              color: "var(--accent-primary)",
               fontWeight: 500,
             }}
           >

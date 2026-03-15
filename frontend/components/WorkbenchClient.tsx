@@ -378,6 +378,17 @@ export default function WorkbenchClient() {
   const notifRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<{ total_documents: number; average_risk: number; high_risk_share: number } | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
+  const [liveTime, setLiveTime] = useState(() => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content: "Hi — I can help you analyze risks, entities, and findings from your documents. Ask anything to start.",
+    },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
   const pollStartRef = useRef<number | null>(null);
 
@@ -389,13 +400,7 @@ export default function WorkbenchClient() {
   }, []);
 
   const applySession = useCallback((session: import("@supabase/supabase-js").Session | null) => {
-    if (!session) {
-      // Add a small delay to avoid immediate redirect loops
-      setTimeout(() => {
-        redirectToLogin();
-      }, 100);
-      return;
-    }
+    if (!session) return;
 
     setSessionToken(session.access_token);
     const user = session.user;
@@ -407,7 +412,7 @@ export default function WorkbenchClient() {
       plan: getUserPlan(user),
     });
     setAuthLoading(false);
-  }, [redirectToLogin]);
+  }, []);
 
   /* Auth */
   useEffect(() => {
@@ -441,8 +446,14 @@ export default function WorkbenchClient() {
         }, 1000);
       }
     })();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e: string, session: import("@supabase/supabase-js").Session | null) => {
-      applySession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: import("@supabase/supabase-js").Session | null) => {
+      if (event === "SIGNED_OUT") {
+        redirectToLogin();
+        return;
+      }
+      if (session) {
+        applySession(session);
+      }
     });
     return () => {
       active = false;
@@ -535,6 +546,38 @@ export default function WorkbenchClient() {
     document.addEventListener("click", handle);
     return () => document.removeEventListener("click", handle);
   }, [notifOpen]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const checkBackend = async () => {
+      try {
+        const response = await fetch("/api/v1/health", { method: "GET", cache: "no-store" });
+        if (!active) return;
+        setBackendOnline(response.ok);
+      } catch {
+        if (!active) return;
+        setBackendOnline(false);
+      }
+    };
+    checkBackend();
+    const timer = setInterval(checkBackend, 15000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!chatScrollRef.current) return;
+    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [chatMessages, chatSending]);
 
   /* Processing animation */
   useEffect(() => {
@@ -644,6 +687,58 @@ export default function WorkbenchClient() {
 
   function onDrop(e: React.DragEvent) { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) setFile(f); }
   async function signOut() { await supabase.auth.signOut(); router.push("/"); }
+
+  async function handleSendChat() {
+    const message = chatInput.trim();
+    if (!message || chatSending) return;
+
+    if (profile?.plan === "free" && dailyChatUsed >= FREE_CHAT_LIMIT) {
+      setShowUpgrade({ type: "chat" });
+      return;
+    }
+
+    const nextMessages: ChatMessage[] = [...chatMessages, { role: "user", content: message }];
+    setChatMessages(nextMessages);
+    setChatInput("");
+    setChatSending(true);
+
+    try {
+      const response = await apiJson<ChatApiResponse & { conversation_history?: ChatMessage[] }>(
+        "/api/v1/chat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            conversation_history: nextMessages,
+          }),
+        },
+        { auth: true, fallbackMessage: "Unable to send message." },
+      );
+
+      const reply =
+        response.reply ||
+        response.answer ||
+        response.data?.reply ||
+        response.data?.answer ||
+        "I could not generate a response. Please try again.";
+
+      setChatMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      if (profile?.plan === "free") {
+        setDailyChatUsed((prev) => prev + 1);
+      }
+    } catch (chatError: unknown) {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: safeUiError(chatError, "The assistant is currently unavailable. Please try again."),
+        },
+      ]);
+    } finally {
+      setChatSending(false);
+    }
+  }
 
   const scansLeft = Math.max(0, FREE_SCAN_LIMIT - dailyScansUsed);
   const isPro = profile?.plan === "pro" || profile?.plan === "pro_max";
@@ -761,6 +856,9 @@ export default function WorkbenchClient() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 99, border: "1px solid var(--border-primary)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600 }}>
+              <Clock size={12} /> {liveTime}
+            </div>
             {/* Notification bell */}
             <div ref={notifRef} style={{ position: "relative" }}>
               <button onClick={() => setNotifOpen(!notifOpen)} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 10, background: notifOpen ? "var(--blue-dim)" : "transparent", border: "1px solid " + (notifOpen ? "var(--blue-border)" : "var(--border-primary)"), cursor: "pointer", color: notifOpen ? "var(--blue)" : "var(--text-muted)", transition: "all 0.15s" }} aria-label="Notifications">
@@ -837,6 +935,13 @@ export default function WorkbenchClient() {
             </div>
           </div>
         </header>
+
+        {backendOnline === false && (
+          <div style={{ margin: "12px 16px 0", padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#FCA5A5", display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 600 }}>
+            <AlertTriangle size={15} color="#FCA5A5" />
+            Backend connection is unavailable. Uploads and chat may fail until the API is reachable.
+          </div>
+        )}
 
         {/* Workbench mobile nav */}
         <div className="workbench-mobile-nav" style={{ padding: "12px 16px 0", background: "var(--bg-primary)", display: "none" }}>
@@ -1056,7 +1161,8 @@ export default function WorkbenchClient() {
               {history.length === 0 ? (
                 <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 20, padding: 60, textAlign: "center" }}>
                   <Clock size={32} color="var(--text-muted)" style={{ margin: "0 auto 14px" }} />
-                  <p style={{ color: "var(--text-muted)", fontSize: 15, marginBottom: 18 }}>No scans yet. Start with your first document.</p>
+                  <p style={{ color: "var(--text-secondary)", fontSize: 15, marginBottom: 6, fontWeight: 600 }}>No documents scanned yet</p>
+                  <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Upload your first file to build timeline history and risk analytics.</p>
                   <button onClick={() => setActiveView("scan")} className="btn-primary" style={{ padding: "10px 24px" }}>New scan <ChevronRight size={14} /></button>
                 </div>
               ) : (
@@ -1095,11 +1201,51 @@ export default function WorkbenchClient() {
           {/* ── CHAT VIEW ── */}
           {activeView === "chat" && (
             <div style={{ maxWidth: 720, margin: "0 auto", height: "calc(100vh - 56px - 48px)" }}>
-              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, padding: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>AI Chat</h3>
-                <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.7 }}>
-                  Document chat is currently available from scan details. Open a completed scan from History to ask contextual questions.
-                </p>
+              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-primary)", borderRadius: 16, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-primary)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>AI Chat</h3>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                      {isPro ? "Unlimited chats on Pro" : `${Math.max(0, FREE_CHAT_LIMIT - dailyChatUsed)} free chats left today`}
+                    </p>
+                  </div>
+                  {!isPro && (
+                    <button onClick={() => setShowUpgrade({ type: "chat" })} style={{ padding: "6px 10px", borderRadius: 99, border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.1)", color: "#F59E0B", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                      <Crown size={12} /> Upgrade
+                    </button>
+                  )}
+                </div>
+
+                <div ref={chatScrollRef} style={{ flex: 1, overflow: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {chatMessages.map((message, index) => (
+                    <div key={`${message.role}-${index}`} style={{ alignSelf: message.role === "user" ? "flex-end" : "flex-start", maxWidth: "84%", padding: "10px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6, background: message.role === "user" ? "var(--blue-dim)" : "rgba(255,255,255,0.04)", border: message.role === "user" ? "1px solid var(--blue-border)" : "1px solid var(--border-primary)", color: message.role === "user" ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                      {message.content}
+                    </div>
+                  ))}
+                  {chatSending && (
+                    <div style={{ alignSelf: "flex-start", padding: "10px 12px", borderRadius: 12, border: "1px solid var(--border-primary)", background: "rgba(255,255,255,0.04)", color: "var(--text-muted)", fontSize: 13 }}>
+                      Assistant is typing...
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ padding: 12, borderTop: "1px solid var(--border-primary)", display: "flex", gap: 8 }}>
+                  <input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSendChat();
+                      }
+                    }}
+                    placeholder="Ask about findings, entities, or risk interpretation..."
+                    style={{ flex: 1, background: "var(--bg-primary)", border: "1px solid var(--border-primary)", borderRadius: 10, color: "var(--text-primary)", padding: "10px 12px", fontSize: 13, outline: "none" }}
+                  />
+                  <button onClick={() => void handleSendChat()} disabled={chatSending || !chatInput.trim()} className="btn-primary" style={{ padding: "10px 14px", borderRadius: 10, opacity: chatSending || !chatInput.trim() ? 0.65 : 1 }}>
+                    <Send size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           )}

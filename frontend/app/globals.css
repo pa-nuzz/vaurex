@@ -24,14 +24,14 @@
   --text-muted: #71717A;
 
   /* Accent + semantic */
-  --accent: #FF6B35;
-  --accent-hover: #FF8555;
-  --accent-dim: rgba(255,107,53,0.12);
+  --accent: #3B82F6;
+  --accent-hover: #60A5FA;
+  --accent-dim: rgba(59,130,246,0.12);
   --accent-orange: #FF6B35;
-  --accent-primary: #FF6B35;
-  --accent-secondary: #E55A25;
-  --accent-surface: rgba(255,107,53,0.08);
-  --accent-border: rgba(255,107,53,0.2);
+  --accent-primary: #3B82F6;
+  --accent-secondary: #2563EB;
+  --accent-surface: rgba(59,130,246,0.08);
+  --accent-border: rgba(59,130,246,0.2);
   --accent-cyan: #06D6A0;
 
   /* Blue accent scheme (secondary accent) */
@@ -104,7 +104,7 @@ body {
 
 /* Card styles */
 .card {
-  background: var(--bg-secondary);
+  background: #2C2C2E;
   border: 1px solid var(--border-primary);
   border-radius: 16px;
   padding: 24px;
@@ -123,7 +123,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--accent-primary);
+  background: var(--accent-orange);
   color: white;
   font-weight: 500;
   border-radius: 8px;
@@ -134,7 +134,7 @@ body {
 }
 
 .btn-primary:hover {
-  background: var(--accent-secondary);
+  background: #FF8555;
   transform: translateY(-1px);
 }
 

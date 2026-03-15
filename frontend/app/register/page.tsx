@@ -239,7 +239,7 @@ function RegisterInner() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "var(--accent)",
+              background: "var(--accent-primary)",
             }}
           >
             <Shield size={20} color="white" />
@@ -311,7 +311,7 @@ function RegisterInner() {
                 style={{
                   background: "none",
                   border: "none",
-                  color: "var(--accent)",
+                  color: "var(--accent-primary)",
                   cursor: resendLoading ? "not-allowed" : "pointer",
                   textDecoration: "underline",
                   fontSize: 13,
@@ -328,7 +328,7 @@ function RegisterInner() {
               }}
               style={{
                 width: "100%",
-                background: "var(--accent)",
+                background: "var(--accent-orange)",
                 color: "white",
                 border: "none",
                 borderRadius: 8,
@@ -405,10 +405,10 @@ function RegisterInner() {
                   onClick={() => setSelectedPlan("free")}
                   style={{
                     padding: "16px 12px",
-                    border: selectedPlan === "free" ? "2px solid var(--accent)" : "1px solid rgba(255,255,255,0.1)",
+                    border: selectedPlan === "free" ? "2px solid var(--accent-primary)" : "1px solid rgba(255,255,255,0.1)",
                     borderRadius: 12,
                     background: selectedPlan === "free" ? "var(--accent-dim)" : "transparent",
-                    color: selectedPlan === "free" ? "var(--accent)" : "var(--text-2)",
+                    color: selectedPlan === "free" ? "var(--accent-primary)" : "var(--text-2)",
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -505,7 +505,7 @@ function RegisterInner() {
                       transition: "border-color 150ms",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "var(--accent)";
+                      e.target.style.borderColor = "var(--accent-primary)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "rgba(255,255,255,0.1)";
@@ -559,7 +559,7 @@ function RegisterInner() {
                       transition: "border-color 150ms",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "var(--accent)";
+                      e.target.style.borderColor = "var(--accent-primary)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "rgba(255,255,255,0.1)";
@@ -613,7 +613,7 @@ function RegisterInner() {
                       transition: "border-color 150ms",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "var(--accent)";
+                      e.target.style.borderColor = "var(--accent-primary)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "rgba(255,255,255,0.1)";
@@ -659,7 +659,7 @@ function RegisterInner() {
                 disabled={loading}
                 style={{
                   width: "100%",
-                  background: "var(--accent)",
+                  background: "var(--accent-orange)",
                   color: "white",
                   border: "none",
                   borderRadius: 8,
@@ -707,7 +707,7 @@ function RegisterInner() {
                   justifyContent: "center",
                   flexShrink: 0
                 }}>
-                  <Mail size={24} color="var(--accent)" />
+                  <Mail size={24} color="var(--accent-primary)" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
@@ -853,7 +853,7 @@ function RegisterInner() {
                       style={{
                         width: "100%",
                         padding: "12px 24px",
-                        background: "var(--accent)",
+                        background: "var(--accent-orange)",
                         color: "white",
                         border: "none",
                         borderRadius: 8,
@@ -912,7 +912,7 @@ function RegisterInner() {
                         border: "none",
                         cursor: resendLoading ? "not-allowed" : "pointer",
                         transition: "all 0.15s",
-                        color: resendLoading ? "var(--text-3)" : "var(--accent)"
+                        color: resendLoading ? "var(--text-3)" : "var(--accent-primary)"
                       }}
                     >
                       {resendLoading ? 'Resend code' : 'Resend code'}
@@ -951,7 +951,7 @@ function RegisterInner() {
               <Link
                 href="/login"
                 style={{
-                  color: "var(--accent)",
+                  color: "var(--accent-primary)",
                   fontWeight: 500,
                 }}
               >
