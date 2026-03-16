@@ -13,13 +13,13 @@
 
 ## 🏂 Features
 
-### 🎯 Core Capabilities
-- **📄 Document Analysis**: AI-powered risk scoring (0-100) for contracts and compliance documents
-- **🏷️ Entity Extraction**: Automatic extraction of companies, dates, amounts, and key parties
-- **🛡️ Compliance Checking**: GDPR, SOC 2, HIPAA, and custom framework compliance monitoring
-- **🤖 AI Chat Assistant**: Interactive document Q&A with intelligent responses
-- **📊 Knowledge Base**: Organize and query document collections
-- **📱 PWA Ready**: Install as a native app with offline capabilities
+### Core Capabilities
+- **Document Analysis**: AI-powered risk scoring (0-100) for contracts and compliance documents
+- **Entity Extraction**: Automatic extraction of companies, dates, amounts, and key parties
+- **Compliance Checking**: GDPR, SOC 2, HIPAA, and custom framework compliance monitoring
+- **AI Chat Assistant**: Interactive document Q&A with intelligent responses
+- **Knowledge Base**: Organize and query document collections
+- **PWA Ready**: Install as a native app with offline capabilities
 
 ### Pipeline
 - **Multi-Model Approach**: Gemini 2.0 Flash, Groq Llama-3.3-70b, OpenRouter DeepSeek-V3
@@ -29,11 +29,11 @@
 
 ### 🔒 
 
-- **🛡️ Security Headers**: CSP, HSTS, XSS protection, and more
-- **🔐 Authentication**: Supabase-based auth with social providers
-- **🔒 Data Protection**: Encrypted storage and secure API communication
-- **📝 Audit Trails**: Complete logging and monitoring system
-- **🚦 Rate Limiting**: Configurable limits per endpoint and user
+- **Security Headers**: CSP, HSTS, XSS protection, and more
+- **Authentication**: Supabase-based auth with social providers
+- **Data Protection**: Encrypted storage and secure API communication
+- **Audit Trails**: Complete logging and monitoring system
+- **Rate Limiting**: Configurable limits per endpoint and user
 
 ## Architecture
 
@@ -54,16 +54,14 @@
 - **Email**: SMTP with TLS support
 
 #### Infra
-- **Deployment**: Docker containers
 - **Monitoring**: Structured JSON logging
 - **Security**: Rate limiting, audit trails
 - **Testing**: Pytest with 100% coverage
 
 
-
 ## Quick Start
 
-### Prerequisites
+### Requires:
 - Node.js 18+
 - Python 3.12+
 - PostgreSQL (via Supabase)
@@ -77,8 +75,7 @@ git clone https://github.com/pa-nuzz/vaurex.git
 cd vaurex
 
 # Frontend Setup
-cd frontend
-npm install
+cd frontend npm install
 cp .env.local.example .env.local
 # Configure .env.local with your Supabase credentials
 
@@ -91,8 +88,7 @@ cp .env.example .env
 # Configure .env with your API keys and database
 
 # Start Backend
-cd backend
-uvicorn main:app --reload --port 8080(port)
+cd backend uvicorn main:app --reload --port 8080(port)
 
 # Start Frontend (new/split yo terminal)
 cd frontend
@@ -147,7 +143,7 @@ BACKEND_URL=http://localhost:8080
 | Chat | 45 requests | 1 minute |
 | Support | 20 requests | 1 minute |
 
-## 🧪 Testing
+## Testing
 
 ### Backend Tests
 ```bash
@@ -165,7 +161,7 @@ pytest tests/test_api_v1.py::test_upload_and_list_scans_multi_user
 cd frontend npm test
 ```
 
-## 🔒 Security
+## Security
 
 ### Implemented Measures
 - **Authentication**: Supabase JWT with refresh tokens
@@ -208,6 +204,7 @@ For magic link authentication, configure SMTP in Supabase dashboard:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+---
 
 
 ### Upcoming Features
