@@ -1,4 +1,4 @@
-# 🚀 Vaurex - Document Intelligence Platform
+# »Vaurex - Document Intelligence Platform
 
 **AI-Powered Document Analysis & Risk Assessment Platform**
 
@@ -11,7 +11,7 @@
 
 </div>
 
-## ✨ Features
+## 🏂 Features
 
 ### 🎯 Core Capabilities
 - **📄 Document Analysis**: AI-powered risk scoring (0-100) for contracts and compliance documents
@@ -21,29 +21,21 @@
 - **📊 Knowledge Base**: Organize and query document collections
 - **📱 PWA Ready**: Install as a native app with offline capabilities
 
-### 🧠 AI Pipeline
+### Pipeline
 - **Multi-Model Approach**: Gemini 2.0 Flash, Groq Llama-3.3-70b, OpenRouter DeepSeek-V3
 - **Advanced OCR**: Text extraction with vision model fallbacks
 - **Risk Assessment**: Evidence-based scoring with detailed reasoning
 - **Context-Aware Chat**: Document-specific AI conversations
 
-### 🎨 Premium UI/UX
-- **✨ Advanced Animations**: Smooth micro-interactions and premium visual effects
-- **🎨 Dynamic Theming**: 60-30-10 color rule with customizable palettes
-- **📱 Responsive Design**: Optimized for mobile, tablet, and desktop
-- **♿ Accessibility**: WCAG 2.1 AA compliant with full keyboard navigation
-- **🌙 Dark Mode**: Eye-friendly dark theme throughout
+### 🔒 
 
-### 🔒 Enterprise Security
 - **🛡️ Security Headers**: CSP, HSTS, XSS protection, and more
 - **🔐 Authentication**: Supabase-based auth with social providers
 - **🔒 Data Protection**: Encrypted storage and secure API communication
 - **📝 Audit Trails**: Complete logging and monitoring system
 - **🚦 Rate Limiting**: Configurable limits per endpoint and user
 
-## 🏗️ Architecture
-
-### Tech Stack
+## Architecture
 
 #### Frontend
 - **Framework**: Next.js 14 with App Router
@@ -61,7 +53,7 @@
 - **Queue**: SQLite-based async job processing
 - **Email**: SMTP with TLS support
 
-#### Infrastructure
+#### Infra
 - **Deployment**: Docker containers
 - **Monitoring**: Structured JSON logging
 - **Security**: Rate limiting, audit trails
@@ -69,7 +61,7 @@
 
 
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
@@ -100,9 +92,9 @@ cp .env.example .env
 
 # Start Backend
 cd backend
-uvicorn main:app --reload --port 8080
+uvicorn main:app --reload --port 8080(port)
 
-# Start Frontend (new terminal)
+# Start Frontend (new/split yo terminal)
 cd frontend
 npm run dev
 ```
@@ -112,7 +104,7 @@ npm run dev
 #### Backend (.env)
 ```env
 # AI Providers
-DEEPSEEK_API_KEY=your_deepseek_key
+DEEPSEEK_API_KEY=your_deepseek_key(optional)
 GEMINI_API_KEY=your_gemini_key
 GROQ_API_KEY=your_groq_key
 OPENROUTER_API_KEY=your_openrouter_key
@@ -146,57 +138,6 @@ SUPABASE_ANON_KEY=your_supabase_anon_key
 BACKEND_URL=http://localhost:8080
 ```
 
-### Frontend Secret Safety Rules
-- Never place `SUPABASE_SERVICE_ROLE_KEY` (or any provider secret key) in frontend env files.
-- Any variable prefixed with `NEXT_PUBLIC_` is bundled to the browser and must be considered public.
-- Only use anon/public keys in the frontend; keep service-role and AI-provider keys in backend `.env` only.
-- Do not log access tokens or raw auth headers in browser console/network debugging helpers.
-
-### Access Points
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080
-- **API Docs**: http://localhost:8080/docs
-- **Health Check**: http://localhost:8080/health
-
-## 📡 API Documentation
-
-### Core Endpoints
-
-#### Authentication
-All protected endpoints require Supabase JWT tokens.
-
-```bash
-# Verify token
-curl -H "Authorization: Bearer <token>" \
-  http://localhost:8080/api/v1/auth/verify
-```
-
-#### Document Operations
-```bash
-# Upload document
-curl -X POST -F "file=@document.pdf" \
-  -H "Authorization: Bearer <token>" \
-  http://localhost:8080/api/v1/upload
-
-# List scans
-curl -H "Authorization: Bearer <token>" \
-  http://localhost:8080/api/v1/scans
-
-# Get scan status
-curl -H "Authorization: Bearer <token>" \
-  http://localhost:8080/api/v1/scans/{id}/poll
-```
-
-#### AI Chat
-```bash
-# Chat with AI
-curl -X POST -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <token>" \
-  -d '{"message":"What are the key risks?"}' \
-  http://localhost:8080/api/v1/chat
-```
-
 ### Rate Limits
 
 | Endpoint | Limit | Period |
@@ -210,10 +151,7 @@ curl -X POST -H "Content-Type: application/json" \
 
 ### Backend Tests
 ```bash
-cd backend
-
-# Run all tests
-pytest
+cd backend pytest
 
 # Run with coverage
 pytest --cov=. --cov-report=html
@@ -224,16 +162,7 @@ pytest tests/test_api_v1.py::test_upload_and_list_scans_multi_user
 
 ### Frontend Tests
 ```bash
-cd frontend
-
-# Run unit tests
-npm test
-
-# Run E2E tests
-npm run test:e2e
-
-# Run accessibility tests
-npm run test:a11y
+cd frontend npm test
 ```
 
 ## 🔒 Security
@@ -254,13 +183,8 @@ npm run test:a11y
 - Regular dependency updates
 - Security audits
 
-### Frontend Exposure Checklist
-- Use only `NEXT_PUBLIC_SUPABASE_ANON_KEY` on the client.
-- Keep `SUPABASE_SERVICE_ROLE_KEY`, SMTP credentials, and AI API keys backend-only.
-- Ensure `.env`, `.env.*`, and local sqlite files are git-ignored.
-- Prefer generic UI error messages; avoid returning internal stack traces to users.
 
-## 📧 Email Configuration
+## Email Configuration
 
 ### Gmail Setup
 1. Enable 2FA on your Gmail account
@@ -284,15 +208,7 @@ For magic link authentication, configure SMTP in Supabase dashboard:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
 
-- **Documentation**: [docs.vaurex.com](https://docs.vaurex.com)
-- **API Docs**: http://localhost:8080/docs (when running locally)
-- **Issues**: [GitHub Issues](https://github.com/your-org/vaurex/issues)
-- **Discord**: [Community Server](https://discord.gg/vaurex)
-- **Email**: support@vaurex.com
-
-## 🗺️ Roadmap
 
 ### Upcoming Features
 - [ ] Real-time collaboration on documents
@@ -314,6 +230,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Built with 🗿 by the Vaurex Team**
+**Built with 🗿 by the Vaurex Team**(ONLY ME DWAG😔)
 
 </div>

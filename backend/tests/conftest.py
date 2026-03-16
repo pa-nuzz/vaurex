@@ -9,8 +9,11 @@ import pytest
 from fastapi import Request
 from fastapi.testclient import TestClient
 
+# NOTE: These are NON-SECRET test placeholder values only.
+# They match the format expected by Supabase but are not real credentials.
+# Real keys must ONLY exist in backend/.env and must NEVER be committed to git.
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test.jwt.placeholder")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-placeholder-not-a-real-key")
 
 
 @dataclass

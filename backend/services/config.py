@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 if os.getenv("ENV", "development").lower() != "production":
     load_dotenv()
 
+
 def _as_bool(value: str | None) -> bool:
     if value is None:
         return False
@@ -43,19 +44,30 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", SUPPORT_EMAIL).strip()
 SMTP_PASSWORD = os.getenv("SUPPORT_EMAIL_PASSWORD", os.getenv("SMTP_PASSWORD", "")).strip()
 
-REQUIRED_ENV_KEYS = [
-    "GEMINI_API_KEY",
-    "GROQ_API_KEY",
-    "OPENROUTER_API_KEY",
-    "DEEPSEEK_API_KEY",
+# These MUST be set — backend refuses to start without them
+HARD_REQUIRED_KEYS = [
     "SUPABASE_URL",
     "SUPABASE_SERVICE_ROLE_KEY",
     "FRONTEND_URL",
 ]
 
+# These are needed for AI features — backend starts but AI degrades gracefully
+AI_REQUIRED_KEYS = [
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "OPENROUTER_API_KEY",
+    "DEEPSEEK_API_KEY",
+]
+
 
 def validate_required_keys() -> List[str]:
-    return [key for key in REQUIRED_ENV_KEYS if os.getenv(key, "").strip() == ""]
+    """Return list of HARD required keys that are missing (blocks startup)."""
+    return [key for key in HARD_REQUIRED_KEYS if os.getenv(key, "").strip() == ""]
+
+
+def validate_ai_keys() -> List[str]:
+    """Return list of AI keys that are missing (warns but does not block startup)."""
+    return [key for key in AI_REQUIRED_KEYS if os.getenv(key, "").strip() == ""]
 
 
 def validate_frontend_url() -> None:

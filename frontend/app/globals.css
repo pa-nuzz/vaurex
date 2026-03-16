@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,8 +8,6 @@
    VAUREX — PREMIUM DESIGN SYSTEM
    Precision Intelligence aesthetic: dark, refined, exact.
    ═══════════════════════════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   /* ── Surfaces (layered depth) ──────────────────────────────────────────── */
@@ -29,6 +29,8 @@
   --border-primary: rgba(255,255,255,0.06);
   --border-hover:   rgba(255,255,255,0.14);
   --border-strong:  rgba(255,255,255,0.20);
+  --border-accent:  rgba(255,122,53,0.22);
+  --border-faint:   rgba(255,255,255,0.04);
 
   /* Typography */
   --text-primary:   #EEF0F5;
@@ -55,11 +57,11 @@
   --blue-border:   rgba(77,158,255,0.22);
 
   /* Legacy blue aliases */
-  --accent-primary: #4D9EFF;
+  --accent-primary:   #4D9EFF;
   --accent-secondary: #3B82F6;
-  --accent-surface: rgba(77,158,255,0.08);
-  --accent-border: rgba(77,158,255,0.20);
-  --accent-hover: #7AB8FF;
+  --accent-surface:   rgba(77,158,255,0.08);
+  --accent-border:    rgba(77,158,255,0.20);
+  --accent-hover:     #7AB8FF;
 
   /* Status */
   --success:  #2ECC71;
@@ -68,38 +70,31 @@
   --critical: #FF3366;
   --pro:       #F4A836;
   --pro-dim:   rgba(244,168,54,0.12);
+  --cyan:      #06D6A0;
 
-  /* Typography scale */
-  --font-display: 'Plus Jakarta Sans', 'Bricolage Grotesque', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
-
-  /* Radii */
+  /* ── Radii ─────────────────────────────────────────────────────────────── */
   --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-
-  /* Legacy aliases */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
 
   /* Shadows */
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:   0 16px 48px rgba(0,0,0,0.6);
   --shadow-card: 0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
   --shadow-float: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
   --shadow-accent: 0 4px 20px rgba(255,122,53,0.25);
-  /* Legacy */
+
+  /* Legacy shadow aliases */
   --shadow: var(--shadow-md);
-  --shadow-sm: var(--shadow-sm);
-  --shadow-lg: var(--shadow-lg);
 
   /* ── Fonts ─────────────────────────────────────────────────────────────── */
-  --font-display: var(--font-display, 'Plus Jakarta Sans', 'Bricolage Grotesque', system-ui, sans-serif);
-  --font-sans:    var(--font-inter, 'Inter', system-ui, sans-serif);
-  --font-mono:    var(--font-jetbrains-mono, 'JetBrains Mono', 'Fira Code', monospace);
+  /* These CSS vars are injected by Next.js layout.tsx via className props.  */
+  /* Do NOT reference --font-display in its own definition (circular ref).   */
+  --font-sans:  var(--font-inter, 'Inter', system-ui, sans-serif);
+  --font-mono:  var(--font-jetbrains-mono, 'JetBrains Mono', 'Fira Code', monospace);
 }
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
@@ -153,7 +148,7 @@ a {
 
 /* ── Typography utilities ─────────────────────────────────────────────────── */
 .font-display {
-  font-family: var(--font-display);
+  font-family: var(--font-display, 'Plus Jakarta Sans', 'Bricolage Grotesque', system-ui, sans-serif);
   font-weight: 800;
   letter-spacing: -0.04em;
 }
@@ -402,6 +397,11 @@ a {
   0%,100% { transform: translateY(0); }
   50%     { transform: translateY(-8px); }
 }
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 rgba(255,107,53,0.4); }
+  70%  { box-shadow: 0 0 0 16px rgba(255,107,53,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+}
 
 .animate-fade-in-up    { animation: fadeInUp   0.45s ease both; }
 .animate-slide-in-right{ animation: slideInRight  0.25s ease; }
@@ -500,8 +500,9 @@ a {
 }
 .premium-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-surface);
+  box-shadow: 0 0 0 3px var(--accent-dim);
 }
+.premium-input::placeholder { color: var(--text-muted); }
 
 /* ── Glow hover card ───────────────────────────────────────────────────────── */
 .glow-card {
@@ -526,3 +527,7 @@ a {
 .text-neutral-400    { color: var(--text-secondary); }
 .text-neutral-500    { color: var(--text-muted); }
 .bg-surface-secondary { background: var(--bg-surface); }
+
+/* ── Spinner utility ────────────────────────────────────────────────────────── */
+.animate-spin { animation: spin 0.8s linear infinite; }
+.animate-pulse { animation: pulse 1.5s ease-in-out infinite; }

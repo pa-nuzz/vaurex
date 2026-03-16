@@ -8,9 +8,11 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from services.config import (
     FRONTEND_URL,
+    SUPABASE_URL,
     IS_PRODUCTION,
     validate_frontend_url,
     validate_required_keys,
+    validate_ai_keys,
 )
 
 from fastapi import FastAPI, Request, Response, HTTPException, UploadFile, File, Depends
@@ -74,7 +76,6 @@ def _setup_logging() -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(logging.INFO)
-    # Silence noisy third-party loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("pypdf").setLevel(logging.ERROR)
@@ -86,12 +87,24 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Hard required keys — block startup if missing
     missing_keys = validate_required_keys()
     if missing_keys:
-        message = f"Refusing to start with empty required environment variables: {', '.join(missing_keys)}"
+        message = f"Refusing to start: missing required env vars: {', '.join(missing_keys)}"
         logger.error("startup.missing_env_keys", extra={"missing_keys": missing_keys})
         print(message)
         raise SystemExit(message)
+
+    # AI keys — warn only, do not block
+    missing_ai_keys = validate_ai_keys()
+    if missing_ai_keys:
+        logger.warning(
+            "startup.missing_ai_keys",
+            extra={
+                "missing_keys": missing_ai_keys,
+                "note": "AI analysis and chat features will be degraded or unavailable.",
+            },
+        )
 
     validate_frontend_url()
 
@@ -113,7 +126,15 @@ API_V1_PREFIX = "/api/v1"
 if IS_PRODUCTION:
     ALLOWED_ORIGINS = {FRONTEND_URL}
 else:
-    ALLOWED_ORIGINS = {FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://192.168.1.66:3000"}
+    ALLOWED_ORIGINS = {
+        FRONTEND_URL,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://192.168.1.66:3000",
+    }
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=sorted(ALLOWED_ORIGINS),
@@ -189,13 +210,13 @@ async def rate_limit_middleware(request: Request, call_next):
     elif method == "POST" and path in {f"{API_V1_PREFIX}/support", f"{API_V1_PREFIX}/support/report-analysis"}:
         limit = int(os.getenv("SUPPORT_RATE_LIMIT_PER_MIN", "20"))
     elif method == "POST" and path.startswith(f"{API_V1_PREFIX}/kb/collections") and "/documents" in path:
-        limit = 10  # KB upload rate limit
+        limit = 10
     elif method == "POST" and path.startswith(f"{API_V1_PREFIX}/kb/collections") and "/chat" in path:
-        limit = 30  # KB chat rate limit
+        limit = 30
     elif method == "POST" and path == f"{API_V1_PREFIX}/compliance/analyze":
-        limit = 5   # Compliance analyze rate limit
+        limit = 5
     elif method == "POST" and path == f"{API_V1_PREFIX}/agent/chat":
-        limit = 10  # Support agent chat rate limit
+        limit = 10
 
     if limit is not None:
         auth = request.headers.get("Authorization", "")
@@ -287,18 +308,21 @@ async def security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+
+    # Use env var instead of hardcoded Supabase URL
+    supabase_host = SUPABASE_URL.rstrip("/") if SUPABASE_URL else ""
+
     if IS_PRODUCTION:
         csp = (
             "default-src 'none'; "
-            "connect-src 'self' https://iakwmgndlueoyzikhviz.supabase.co; "
+            f"connect-src 'self' {supabase_host}; "
             "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
         )
     else:
-        # Relaxed policy for local development to allow frontend-backend communication.
         csp = (
             "default-src 'none'; "
-            "connect-src 'self' http://localhost:3000 http://localhost:8000 "
-            "http://127.0.0.1:8000 https://iakwmgndlueoyzikhviz.supabase.co; "
+            f"connect-src 'self' http://localhost:3000 http://localhost:8000 "
+            f"http://127.0.0.1:8000 {supabase_host}; "
             "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
         )
     response.headers["Content-Security-Policy"] = csp
@@ -309,7 +333,6 @@ async def security_headers(request: Request, call_next):
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
-# Register routers with proper prefixes (no duplicate registrations)
 app.include_router(upload_router, prefix=API_V1_PREFIX)
 app.include_router(scans_router, prefix=API_V1_PREFIX)
 app.include_router(support_router, prefix=API_V1_PREFIX)
@@ -320,7 +343,7 @@ app.include_router(support_agent_router, prefix=API_V1_PREFIX)
 app.include_router(quota_router, prefix=API_V1_PREFIX)
 app.include_router(auth_events_router, prefix=API_V1_PREFIX)
 
-# Legacy compatibility aliases for existing clients and tests.
+
 @app.post("/upload", include_in_schema=False)
 async def upload_legacy_alias(
     file: UploadFile = File(...),
@@ -334,7 +357,7 @@ async def upload_legacy_alias(
 async def list_scans_legacy_alias(user: dict = Depends(get_current_user)):
     return await list_scans_v1(user=user)
 
-# Setup monitoring and metrics
+
 setup_monitoring_middleware(app)
 
 
@@ -366,12 +389,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 async def health_v1():
     import datetime
     import psutil
-    
-    # System metrics
+
     cpu_percent = psutil.cpu_percent(interval=1)
     memory = psutil.virtual_memory()
-    disk = psutil.disk_usage('/')
-    
+    disk = psutil.disk_usage("/")
+
     return {
         "status": "ok",
         "version": "3.0.0",
@@ -379,9 +401,9 @@ async def health_v1():
         "system": {
             "cpu_percent": cpu_percent,
             "memory_percent": memory.percent,
-            "memory_available_gb": round(memory.available / (1024**3), 2),
+            "memory_available_gb": round(memory.available / (1024 ** 3), 2),
             "disk_percent": disk.percent,
-            "disk_free_gb": round(disk.free / (1024**3), 2),
+            "disk_free_gb": round(disk.free / (1024 ** 3), 2),
         },
         "endpoints": {
             "upload": "/api/v1/upload",
@@ -389,7 +411,7 @@ async def health_v1():
             "chat": "/api/v1/chat",
             "compliance": "/api/v1/compliance",
             "knowledge_base": "/api/v1/kb",
-        }
+        },
     }
 
 
