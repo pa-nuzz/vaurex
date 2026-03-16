@@ -1,4 +1,4 @@
-![alt text](<ChatGPT Image Mar 17, 2026 at 12_31_00 AM.png>)
+![alt text](<Vaurex preview.png>)
 
 # »Vaurex - Document Intelligence Platform
 
