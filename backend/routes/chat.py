@@ -14,6 +14,7 @@ from services.audit import audit_event
 from services.config import GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY
 from services.ai_chat import get_ai_response
 from services.security import MAX_MESSAGE_LENGTH, sanitize_ai_output, sanitize_text_input, verify_ownership
+from services.security import _CONTROL_CHARS
 from services.rate_limiter import check_daily_quota
 
 router = APIRouter()
@@ -91,9 +92,10 @@ async def _resolve_chat_answer(user_id: str, payload: ChatRequest) -> tuple[str,
     # Add conversation history (keep last 10 exchanges)
     for msg in conversation_history[-10:]:
         if msg.get("role") in ["user", "assistant"]:
+            content = _CONTROL_CHARS.sub("", str(msg.get("content", "")))[:MAX_MESSAGE_LENGTH]
             messages.append({
                 "role": msg["role"],
-                "content": msg.get("content", "")
+                "content": content,
             })
     
     # Add context and current message

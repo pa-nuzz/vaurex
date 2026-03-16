@@ -107,7 +107,7 @@ async def check_daily_quota(
 
     Returns (allowed, used_count, reset_at_iso).
     """
-    today = datetime.utcnow().date().isoformat()
+    today = datetime.now(timezone.utc).date().isoformat()
     try:
         result = (
             client.table("daily_usage")
@@ -139,7 +139,7 @@ async def check_daily_quota(
         used = 0
 
     reset_at = (
-        datetime.utcnow()
+        datetime.now(timezone.utc)
         .replace(hour=0, minute=0, second=0, microsecond=0)
         + timedelta(days=1)
     ).isoformat()

@@ -15,6 +15,7 @@ from services.security import (
     MAX_DESCRIPTION_LENGTH,
     MAX_MESSAGE_LENGTH,
     MAX_NAME_LENGTH,
+    _CONTROL_CHARS,
     read_validated_upload,
     sanitize_ai_output,
     sanitize_optional_text_input,
@@ -394,9 +395,10 @@ async def kb_chat(
         # Add conversation history
         for msg in (payload.conversation_history or [])[-10:]:
             if msg.get("role") in ["user", "assistant"]:
+                content = _CONTROL_CHARS.sub("", str(msg.get("content", "")))[:MAX_MESSAGE_LENGTH]
                 messages.append({
                     "role": msg["role"],
-                    "content": msg.get("content", "")
+                    "content": content,
                 })
         
         # Add context and current question

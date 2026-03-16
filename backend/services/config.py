@@ -38,6 +38,8 @@ AUTH_RATE_LIMIT_PER_MIN = int(os.getenv("AUTH_RATE_LIMIT_PER_MIN", "180"))
 CHAT_RATE_LIMIT_PER_MIN = int(os.getenv("CHAT_RATE_LIMIT_PER_MIN", "45"))
 SUPPORT_RATE_LIMIT_PER_MIN = int(os.getenv("SUPPORT_RATE_LIMIT_PER_MIN", "20"))
 
+TRUSTED_PROXY_DEPTH = int(os.getenv("TRUSTED_PROXY_DEPTH", "1"))
+
 SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "").strip()
 SMTP_HOST = os.getenv("SMTP_SERVER", os.getenv("SMTP_HOST", "")).strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from services.rate_limiter import PERSISTENT_GUEST_RATE_LIMITER
 from services.config import GROQ_API_KEY, OPENROUTER_API_KEY, DEEPSEEK_API_KEY
 from services.ai_chat import get_ai_response
-from services.security import MAX_MESSAGE_LENGTH, request_fingerprint, sanitize_ai_output, sanitize_text_input
+from services.security import MAX_MESSAGE_LENGTH, _CONTROL_CHARS, request_fingerprint, sanitize_ai_output, sanitize_text_input
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -95,9 +95,10 @@ async def support_agent_chat(
     # Add conversation history (keep last 10 exchanges)
     for msg in conversation_history[-10:]:
         if msg.get("role") in ["user", "assistant"]:
+            content = _CONTROL_CHARS.sub("", str(msg.get("content", "")))[:MAX_MESSAGE_LENGTH]
             messages.append({
                 "role": msg["role"],
-                "content": msg.get("content", "")
+                "content": content,
             })
     
     # Add current message
