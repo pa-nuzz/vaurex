@@ -1,6 +1,6 @@
 ![alt text](<Vaurex preview.png>)
 
-# »Vaurex - Document Intelligence Platform
+# «Vaurex - Document Intelligence Platform»
 
 **AI-Powered Document Analysis & Risk Assessment Platform**
 
