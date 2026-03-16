@@ -51,19 +51,19 @@ export default function PremiumCard({
 
   const variantClasses = {
     default: `
-      bg-white border border-gray-200 shadow-lg
-      ${hover ? 'hover:bg-gray-50 hover:border-gray-300' : ''}
+      bg-surface-secondary border border-primary shadow-lg
+      ${hover ? 'hover:bg-surface-tertiary hover:border-hover' : ''}
       ${glow ? 'shadow-glow' : 'shadow-lg'}
       ${hover ? 'hover:shadow-xl' : ''}
     `,
     glass: `
-      bg-white/80 backdrop-blur-xl border border-gray-200/50 shadow-lg
-      ${hover ? 'hover:bg-white/90 hover:border-gray-300' : ''}
+      bg-surface-secondary/80 backdrop-blur-xl border border-primary/50 shadow-lg
+      ${hover ? 'hover:bg-surface-secondary/90 hover:border-hover' : ''}
       ${glow ? 'shadow-glow' : 'shadow-lg'}
       ${hover ? 'hover:shadow-xl' : ''}
     `,
     neon: `
-      bg-white border border-blue-200 shadow-lg
+      bg-surface-secondary border border-blue-200 shadow-lg
       ${hover ? 'hover:border-blue-400' : ''}
       ${glow ? 'shadow-glow' : 'shadow-lg'}
       ${hover ? 'hover:shadow-xl' : ''}
@@ -72,9 +72,9 @@ export default function PremiumCard({
       before:opacity-0 hover:before:opacity-100 before:transition-opacity
     `,
     gradient: `
-      bg-gradient-to-br from-white via-gray-50 to-white
-      border border-gray-200 shadow-lg
-      ${hover ? 'hover:border-gray-300' : ''}
+      bg-gradient-to-br from-surface-secondary via-surface-tertiary to-surface-secondary
+      border border-primary shadow-lg
+      ${hover ? 'hover:border-hover' : ''}
       ${glow ? 'shadow-glow' : 'shadow-lg'}
       ${hover ? 'hover:shadow-xl' : ''}
       before:absolute before:inset-0 before:rounded-2xl
@@ -83,7 +83,7 @@ export default function PremiumCard({
     `,
     minimal: `
       bg-transparent border-none
-      ${hover ? 'hover:bg-gray-50/50' : ''}
+      ${hover ? 'hover:bg-surface-tertiary/50' : ''}
       ${glow ? '' : ''}
     `
   };
@@ -112,7 +112,7 @@ export default function PremiumCard({
       
       {/* Shimmer effect */}
       {hover && (
-        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer pointer-events-none" />
+        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer pointer-events-none" />
       )}
       
       {/* Content */}
@@ -123,10 +123,10 @@ export default function PremiumCard({
       {/* Decorative elements for premium variants */}
       {variant === 'neon' && (
         <>
-          <div className="absolute top-0 left-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-          <div className="absolute top-0 right-0 w-2 h-2 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-          <div className="absolute bottom-0 left-0 w-2 h-2 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute bottom-0 right-0 w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute top-0 left-0 w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+          <div className="absolute top-0 right-0 w-2 h-2 bg-accent-orange rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute bottom-0 left-0 w-2 h-2 bg-accent-orange rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute bottom-0 right-0 w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '1.5s' }} />
         </>
       )}
     </motion.div>

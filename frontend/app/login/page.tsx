@@ -156,29 +156,32 @@ function LoginInner() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 12,
             marginBottom: 32,
             justifyContent: "center",
           }}
         >
           <div
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
+              width: 48,
+              height: 48,
+              borderRadius: "var(--radius-md)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: "var(--accent-primary)",
+              background: "linear-gradient(135deg, var(--accent), var(--accent-bright))",
+              boxShadow: "var(--shadow-accent)",
             }}
           >
-            <Shield size={20} color="white" />
+            <Shield size={24} color="white" />
           </div>
           <span
             style={{
-              fontWeight: 700,
-              fontSize: 22,
-              color: "var(--text-1)",
+              fontWeight: 800,
+              fontSize: 26,
+              color: "var(--text-primary)",
+              fontFamily: "var(--font-display)",
+              letterSpacing: "-0.02em",
             }}
           >
             Vaurex
@@ -187,11 +190,13 @@ function LoginInner() {
 
         <h1
           style={{
-            fontSize: 24,
-            fontWeight: 700,
-            color: "var(--accent-primary)",
+            fontSize: 28,
+            fontWeight: 800,
+            color: "var(--text-primary)",
             marginBottom: 8,
             textAlign: "center",
+            fontFamily: "var(--font-display)",
+            letterSpacing: "-0.03em",
           }}
         >
           Welcome back
@@ -272,22 +277,11 @@ function LoginInner() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
+                className="premium-input"
                 style={{
                   width: "100%",
-                  background: "#1C1C1E",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8,
-                  color: "var(--text-1)",
                   padding: "12px 14px 12px 44px",
                   fontSize: 14,
-                  outline: "none",
-                  transition: "border-color 150ms",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "var(--accent-primary)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(255,255,255,0.1)";
                 }}
               />
             </div>
@@ -326,22 +320,11 @@ function LoginInner() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                className="premium-input"
                 style={{
                   width: "100%",
-                  background: "#1C1C1E",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 8,
-                  color: "var(--text-1)",
                   padding: "12px 44px 12px 44px",
                   fontSize: 14,
-                  outline: "none",
-                  transition: "border-color 150ms",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "var(--accent-primary)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(255,255,255,0.1)";
                 }}
               />
               <button
@@ -385,22 +368,14 @@ function LoginInner() {
           <button
             type="submit"
             disabled={loading}
+            className="btn-primary"
             style={{
               width: "100%",
-              background: "var(--accent-orange)",
-              color: "white",
-              border: "none",
-              borderRadius: 8,
-              padding: "12px",
-              fontWeight: 600,
+              padding: "14px",
               fontSize: 15,
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.7 : 1,
-              transition: "background 150ms, transform 150ms",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
+              borderRadius: "var(--radius-md)",
+              background: "var(--accent)",
+              boxShadow: "var(--shadow-accent)",
             }}
           >
             {loading ? (

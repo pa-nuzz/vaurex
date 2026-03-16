@@ -1107,15 +1107,15 @@ export default function WorkbenchClient() {
                   ) : (
                     <div className="scan-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
                       {[
-                        { label: "Total Documents",  value: countTotal,    subtitle: "All time",                    icon: FileText,      color: "#FF6B35" },
-                        { label: "Average Risk Score",value: countAvgRisk,  subtitle: "Across completed scans",     icon: BarChart3,     color: "#3B82F6" },
-                        { label: "High-Risk Share",   value: countHighRisk, subtitle: "% of docs with risk > 50",   icon: AlertTriangle, color: "#EF4444" },
+                        { label: "Total Documents",  value: countTotal,    subtitle: "All time",                    icon: FileText,      color: "var(--accent)" },
+                        { label: "Average Risk Score",value: countAvgRisk,  subtitle: "Across completed scans",     icon: BarChart3,     color: "var(--blue)" },
+                        { label: "High-Risk Share",   value: countHighRisk, subtitle: "% of docs with risk > 50",   icon: AlertTriangle, color: "var(--danger)" },
                       ].map((s, i) => (
-                        <div key={i} style={{ background: `linear-gradient(135deg, ${s.color}10, var(--bg-secondary))`, border: "1px solid rgba(255,255,255,0.06)", borderLeft: `3px solid ${s.color}`, borderRadius: 12, padding: "18px 20px", position: "relative", overflow: "hidden" }}>
-                          <div style={{ position: "absolute", top: 14, right: 14, color: s.color, opacity: 0.25 }}><s.icon size={20} /></div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>{s.label}</p>
-                          <p className="font-display" style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", letterSpacing: "-0.02em" }}>{s.value}</p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>{s.subtitle}</p>
+                        <div key={i} className="stat-card" style={{ borderLeftColor: s.color }}>
+                          <div style={{ position: "absolute", top: 14, right: 14, color: s.color, opacity: 0.3 }}><s.icon size={20} /></div>
+                          <div className="stat-label">{s.label}</div>
+                          <div className="stat-number">{s.value}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>{s.subtitle}</div>
                         </div>
                       ))}
                     </div>
@@ -1130,25 +1130,26 @@ export default function WorkbenchClient() {
                       onDragLeave={() => setDrag(false)}
                       onDrop={onDrop}
                       onClick={() => !file && fileRef.current?.click()}
-                      style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", minHeight: 300, cursor: file ? "default" : "pointer", borderRadius: 18, border: `2px dashed ${dragOver ? "var(--blue)" : file ? "rgba(6,214,160,0.4)" : "var(--accent-border)"}`, background: dragOver ? "rgba(59,130,246,0.05)" : file ? "rgba(6,214,160,0.03)" : "rgba(255,107,53,0.04)", transition: "all 0.2s", boxShadow: file ? "0 0 0 1px rgba(6,214,160,0.1)" : "none" }}
+                      className={`card-lift ${dragOver ? "animate-pulse-glow" : ""}`}
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", minHeight: 320, cursor: file ? "default" : "pointer", borderRadius: "var(--radius-lg)", border: `2px dashed ${dragOver ? "var(--blue)" : file ? "var(--success)" : "var(--border-accent)"}`, background: dragOver ? "var(--blue-dim)" : file ? "rgba(46,204,113,0.03)" : "var(--accent-dim)", transition: "all 0.3s ease", position: "relative", overflow: "hidden" }}
                     >
                       <input ref={fileRef} type="file" hidden accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp,.tiff" onChange={e => { if (e.target.files?.[0]) setFile(e.target.files[0]); }} />
                       {file ? (
                         <div style={{ padding: "0 24px" }}>
-                          <div style={{ width: 60, height: 60, borderRadius: 16, margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(6,214,160,0.1)", border: "1.5px solid rgba(6,214,160,0.3)" }}>
-                            <FileText size={24} color="var(--cyan)" />
+                          <div style={{ width: 64, height: 64, borderRadius: "var(--radius-md)", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(46,204,113,0.1)", border: "1.5px solid rgba(46,204,113,0.25)" }}>
+                            <FileText size={28} color="var(--success)" />
                           </div>
                           <p className="font-display" style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", marginBottom: 5, letterSpacing: "-0.02em" }}>{file.name}</p>
                           <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 20 }}>{(file.size / 1024 / 1024).toFixed(2)} MB · {file.type || "document"}</p>
                           <div style={{ display: "flex", gap: 9, justifyContent: "center", flexWrap: "wrap" }}>
-                            <button onClick={e => { e.stopPropagation(); handleUpload(); }} className="btn-primary" style={{ padding: "10px 24px" }}><Zap size={14} /> Analyze document</button>
-                            <button onClick={e => { e.stopPropagation(); setFile(null); }} className="btn-ghost" style={{ padding: "10px 12px" }}><Trash2 size={14} /></button>
+                            <button onClick={e => { e.stopPropagation(); handleUpload(); }} className="btn-primary" style={{ padding: "12px 28px", borderRadius: "var(--radius-md)", background: "var(--accent)", boxShadow: "var(--shadow-accent)" }}><Zap size={15} /> Analyze document</button>
+                            <button onClick={e => { e.stopPropagation(); setFile(null); }} className="btn-ghost" style={{ padding: "12px 16px", borderRadius: "var(--radius-sm)" }}><Trash2 size={15} /></button>
                           </div>
                         </div>
                       ) : (
                         <>
-                          <div style={{ width: 60, height: 60, borderRadius: 16, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-surface)", border: "1.5px dashed var(--accent-border)" }}>
-                            <Upload size={24} color="var(--accent-primary)" />
+                          <div style={{ width: 64, height: 64, borderRadius: "var(--radius-md)", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent-surface)", border: "1.5px dashed var(--accent-border)" }}>
+                            <Upload size={28} color="var(--accent)" />
                           </div>
                           <span className="badge-accent" style={{ marginBottom: 12 }}>Document Intelligence Workbench</span>
                           <p className="font-display" style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8, letterSpacing: "-0.02em" }}>Drop a document or click to browse</p>

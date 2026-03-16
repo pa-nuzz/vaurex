@@ -74,38 +74,38 @@ export default function PremiumButton({
 
   const variantClasses = {
     primary: `
-      bg-gradient-to-r from-blue-500 to-blue-600
-      text-white shadow-lg shadow-blue-500/25
-      hover:shadow-xl hover:shadow-blue-500/40
+      bg-gradient-to-r from-accent-orange to-accent-orange/90
+      text-white shadow-lg shadow-accent-orange/25
+      hover:shadow-xl hover:shadow-accent-orange/40
       hover:scale-[1.02] active:scale-[0.98]
       before:absolute before:inset-0 before:rounded-inherit
-      before:bg-gradient-to-r before:from-blue-400 before:to-blue-600
+      before:bg-gradient-to-r before:from-accent-orange/80 before:to-accent-orange
       before:opacity-0 hover:before:opacity-100 before:transition-opacity
     `,
     secondary: `
-      bg-gray-100 text-gray-900 border border-gray-300
-      hover:bg-gray-200 hover:border-gray-400
+      bg-surface-tertiary text-primary border border-primary
+      hover:bg-surface-secondary hover:border-hover
       hover:scale-[1.02] active:scale-[0.98]
-      shadow-lg shadow-gray-900/10
+      shadow-lg shadow-black/10
     `,
     outline: `
-      bg-transparent text-blue-600 border border-blue-500
+      bg-transparent text-blue-400 border border-blue-500
       hover:bg-blue-500 hover:text-white
       hover:shadow-lg hover:shadow-blue-500/25
       hover:scale-[1.02] active:scale-[0.98]
     `,
     ghost: `
-      bg-transparent text-gray-600
-      hover:bg-gray-100 hover:text-gray-900
+      bg-transparent text-secondary
+      hover:bg-surface-tertiary hover:text-primary
       hover:scale-[1.02] active:scale-[0.98]
     `,
     gradient: `
-      bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600
-      text-white shadow-lg shadow-blue-500/25
-      hover:shadow-xl hover:shadow-blue-500/40
+      bg-gradient-to-r from-accent-orange via-accent-orange/90 to-accent-orange/80
+      text-white shadow-lg shadow-accent-orange/25
+      hover:shadow-xl hover:shadow-accent-orange/40
       hover:scale-[1.02] active:scale-[0.98]
       before:absolute before:inset-0 before:rounded-inherit
-      before:bg-gradient-to-r before:from-blue-600 before:via-blue-400 before:to-blue-500
+      before:bg-gradient-to-r before:from-accent-orange/90 before:via-accent-orange before:to-accent-orange/80
       before:opacity-0 hover:before:opacity-100 before:transition-opacity
     `
   };
@@ -117,7 +117,7 @@ export default function PremiumButton({
     <>
       {/* Shimmer Effect */}
       {shimmerEffect && (
-        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
       )}
       
       {/* Ripple Effect */}
@@ -162,7 +162,7 @@ export default function PremiumButton({
           
           {/* Sparkles for premium feel */}
           {!loading && (variant === 'primary' || variant === 'gradient') && (
-            <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity animate-float" />
+            <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-accent-orange/80 opacity-0 group-hover:opacity-100 transition-opacity animate-float" />
           )}
         </>
       )}

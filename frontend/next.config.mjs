@@ -1,3 +1,9 @@
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,34 +11,32 @@ const nextConfig = {
   compress: true,
   experimental: {
     proxyClientMaxBodySize: 25 * 1024 * 1024,
+    turbopack: {
+      root: __dirname,
+    },
   },
   images: {
     unoptimized: true,
   },
-  // Allow all localhost/127.0.0.1 origins in dev (VS Code browser, previews)
+  // Proxy /api/* → FastAPI backend (this is what was missing!)
+  async rewrites() {
+    const backendUrl = (
+      process.env.BACKEND_URL ??
+      process.env.NEXT_PUBLIC_BACKEND_URL ??
+      "http://localhost:8000"
+    ).replace(/\/+$/, "");
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
   allowedDevOrigins: [
-    "127.0.0.1",
     "localhost",
+    "127.0.0.1",
     "*.localhost",
     "192.168.1.66",
-    "192.168.*.*",
-    "10.*.*.*",
-    "172.16.*.*",
-    "172.17.*.*",
-    "172.18.*.*",
-    "172.19.*.*",
-    "172.20.*.*",
-    "172.21.*.*",
-    "172.22.*.*",
-    "172.23.*.*",
-    "172.24.*.*",
-    "172.25.*.*",
-    "172.26.*.*",
-    "172.27.*.*",
-    "172.28.*.*",
-    "172.29.*.*",
-    "172.30.*.*",
-    "172.31.*.*",
   ],
 };
 

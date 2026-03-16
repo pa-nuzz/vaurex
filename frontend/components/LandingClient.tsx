@@ -237,11 +237,22 @@ export default function LandingClient() {
 
       {/* ── Hero ── */}
       <section ref={heroRef} style={{ paddingTop: 100, paddingBottom: 80, overflow: "hidden", position: "relative" }}>
-        {/* Single subtle radial glow */}
+        {/* Grid background texture */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+          pointerEvents: "none",
+        }} />
+        
+        {/* Ambient radial glow */}
         <div style={{
           position: "absolute", top: "5%", left: "50%", transform: "translateX(-50%)",
-          width: 700, height: 400, borderRadius: "50%",
-          background: "radial-gradient(ellipse, rgba(255,107,53,0.11) 0%, rgba(59,130,246,0.06) 45%, transparent 72%)",
+          width: 800, height: 500, borderRadius: "50%",
+          background: "radial-gradient(ellipse, rgba(255,122,53,0.08) 0%, rgba(77,158,255,0.04) 45%, transparent 72%)",
           pointerEvents: "none",
         }} />
 
@@ -258,11 +269,11 @@ export default function LandingClient() {
                 <motion.h1 className="font-display"
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.12 }}
-                  style={{ fontSize: "clamp(38px, 4.8vw, 62px)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "-0.03em", color: "var(--text-1)", marginBottom: 20 }}
+                  style={{ fontSize: "clamp(42px, 5.2vw, 68px)", fontWeight: 800, lineHeight: 1.05, letterSpacing: "-0.04em", color: "var(--text-1)", marginBottom: 24 }}
                 >
                   Know exactly what&apos;s<br />
                   in your{" "}
-                  <span style={{ background: "linear-gradient(135deg, var(--accent) 0%, #FF9A5C 55%, var(--blue) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>documents</span>
+                  <span style={{ background: "linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 50%, var(--blue) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>documents</span>
                 </motion.h1>
 
                 <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.22 }}
@@ -272,7 +283,7 @@ export default function LandingClient() {
 
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
                   style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 36 }}>
-                  <Link href="/register" className="vx-btn vx-btn-primary" style={{ padding: "11px 24px", fontSize: 14 }}>
+                  <Link href="/register" className="vx-btn vx-btn-primary" style={{ padding: "12px 28px", fontSize: 14, background: "var(--accent)", boxShadow: "var(--shadow-accent)" }}>
                     Start free <ArrowRight size={14} />
                   </Link>
                   <a href="#demo" className="vx-btn vx-btn-ghost" style={{ padding: "11px 22px", fontSize: 14 }}>
@@ -280,14 +291,18 @@ export default function LandingClient() {
                   </a>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.42 }}
-                  style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                  {[{ icon: Shield, label: "SOC 2 Ready" }, { icon: Globe, label: "Multi-model AI" }, { icon: Clock, label: "Results in seconds" }].map((t, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <t.icon size={13} color="var(--text-3)" />
-                      <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 500 }}>{t.label}</span>
+                {/* Social proof counter */}
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.35 }}
+                  style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 36, padding: "12px 18px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", width: "fit-content" }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "8px", background: "var(--accent-dim)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Shield size={16} color="var(--accent)" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", fontFamily: "var(--font-mono)" }} className="animate-count-up">
+                      4,200+
                     </div>
-                  ))}
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>documents analyzed</div>
+                  </div>
                 </motion.div>
               </div>
 
@@ -328,13 +343,34 @@ export default function LandingClient() {
                   </div>
                 </div>
 
-                {/* Entities */}
+                {/* Enhanced product preview card with more realistic data */}
                 <div style={{ padding: "13px 18px", borderBottom: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Detected Entities</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {["Nexus Holdings Ltd", "$4.2M transfer", "James Crowley", "Offshore account"].map((e, i) => (
-                      <span key={i} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: i === 3 ? "rgba(239,68,68,0.08)" : "var(--accent-dim)", color: i === 3 ? "var(--danger)" : "var(--accent)", border: `1px solid ${i === 3 ? "rgba(239,68,68,0.22)" : "var(--accent-border)"}` }}>{e}</span>
-                    ))}
+                    {[
+                      { label: "Nexus Holdings Ltd", type: "org" },
+                      { label: "$4.2M transfer", type: "money" },
+                      { label: "James Crowley", type: "person" },
+                      { label: "Cayman Islands", type: "location" },
+                      { label: "Dec 31, 2024", type: "date" },
+                      { label: "Offshore account", type: "risk" }
+                    ].map((e, i) => {
+                      const colors = {
+                        org: { bg: "var(--blue-dim)", border: "var(--blue-border)", color: "var(--blue)" },
+                        money: { bg: "rgba(244,168,54,0.1)", border: "rgba(244,168,54,0.22)", color: "var(--warning)" },
+                        person: { bg: "var(--accent-dim)", border: "var(--accent-border)", color: "var(--accent)" },
+                        location: { bg: "rgba(139,92,246,0.1)", border: "rgba(139,92,246,0.22)", color: "#8B5CF6" },
+                        date: { bg: "rgba(6,214,160,0.1)", border: "rgba(6,214,160,0.22)", color: "var(--success)" },
+                        risk: { bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.22)", color: "var(--danger)" }
+                      };
+                      const style = colors[e.type as keyof typeof colors] || colors.org;
+                      return (
+                        <span key={i} style={{ 
+                          padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600, 
+                          background: style.bg, color: style.color, border: `1px solid ${style.border}` 
+                        }}>{e.label}</span>
+                      );
+                    })}
                   </div>
                 </div>
 
