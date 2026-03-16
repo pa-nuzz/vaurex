@@ -1,3 +1,5 @@
+![alt text](<ChatGPT Image Mar 17, 2026 at 12_31_00 AM.png>)
+
 # »Vaurex - Document Intelligence Platform
 
 **AI-Powered Document Analysis & Risk Assessment Platform**
@@ -204,7 +206,6 @@ For magic link authentication, configure SMTP in Supabase dashboard:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
 
 
 ### Upcoming Features
