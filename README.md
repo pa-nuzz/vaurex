@@ -11,7 +11,7 @@
 
 </div>
 
-## 🏂 Features
+## Features
 
 ### Core Capabilities
 - **Document Analysis**: AI-powered risk scoring (0-100) for contracts and compliance documents
@@ -27,7 +27,7 @@
 - **Risk Assessment**: Evidence-based scoring with detailed reasoning
 - **Context-Aware Chat**: Document-specific AI conversations
 
-### 🔒 
+### Security 
 
 - **Security Headers**: CSP, HSTS, XSS protection, and more
 - **Authentication**: Supabase-based auth with social providers
