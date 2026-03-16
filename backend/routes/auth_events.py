@@ -106,9 +106,14 @@ async def verify_password_reset_code(payload: VerifyPasswordResetCodePayload, re
 
 
 @router.post("/auth/password-reset/complete")
-async def complete_password_reset(payload: CompletePasswordResetPayload):
+async def complete_password_reset(payload: CompletePasswordResetPayload, request: Request):
     email = (payload.email or "").strip().lower()
     code = (payload.code or "").strip()
+
+    ip_key = f"pwd-reset:complete:ip:{request_ip(request)}"
+    allowed, retry_after, _, _ = GLOBAL_RATE_LIMITER.allow(ip_key, 10, 60)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=f"Too many reset attempts. Retry in {retry_after}s")
 
     # Validate code first without consuming it, so we can safely run the
     # same-password check without burning the one-time code on a rejection.

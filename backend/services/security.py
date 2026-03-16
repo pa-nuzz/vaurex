@@ -11,6 +11,7 @@ from typing import Any, Optional
 from fastapi import HTTPException, Request
 
 from services.audit import audit_event
+from services.config import TRUSTED_PROXY_DEPTH
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,13 @@ def build_storage_filename(display_name: str) -> str:
 
 def request_ip(request: Request) -> str:
     forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",", 1)[0].strip()
+    if forwarded_for and TRUSTED_PROXY_DEPTH > 0:
+        ips = [ip.strip() for ip in forwarded_for.split(",")]
+        # With N trusted proxy hops, the real client IP is the Nth entry from
+        # the right (the proxies append their upstream IP in order).  If there
+        # are fewer entries than expected, fall back to the leftmost.
+        idx = len(ips) - TRUSTED_PROXY_DEPTH
+        return ips[idx] if idx >= 0 else ips[0]
     return request.client.host if request.client else "unknown"
 
 

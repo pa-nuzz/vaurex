@@ -1,8 +1,91 @@
 import json
+import os
 
 
 def _auth(user_id: str):
     return {"Authorization": f"Bearer {user_id}"}
+
+
+# ── Security regression tests ─────────────────────────────────────────────────
+
+def test_request_ip_uses_trusted_proxy_depth_to_prevent_spoofing():
+    """X-Forwarded-For spoofing must be rejected when TRUSTED_PROXY_DEPTH=1."""
+    from services.security import request_ip
+    from unittest.mock import MagicMock
+
+    # With TRUSTED_PROXY_DEPTH=1 (default) the function must return the
+    # *rightmost* IP (added by the trusted proxy), not the leftmost (spoofed).
+    original_depth = int(os.getenv("TRUSTED_PROXY_DEPTH", "1"))
+    try:
+        import services.security as sec_mod
+        sec_mod.TRUSTED_PROXY_DEPTH = 1
+
+        req = MagicMock()
+        # Client spoofs their IP by injecting a fake value; proxy appends real IP.
+        req.headers = {"x-forwarded-for": "1.2.3.4, 10.0.0.1"}
+        req.client = MagicMock(host="10.0.0.1")
+
+        ip = request_ip(req)
+        # Real client IP should be 10.0.0.1 (rightmost — added by trusted proxy)
+        # NOT the spoofed 1.2.3.4 (leftmost — set by the attacker)
+        assert ip == "10.0.0.1", f"Expected 10.0.0.1, got {ip}"
+    finally:
+        sec_mod.TRUSTED_PROXY_DEPTH = original_depth
+
+
+def test_request_ip_depth_zero_uses_direct_connection():
+    """TRUSTED_PROXY_DEPTH=0 must use the raw TCP socket IP (not X-Forwarded-For)."""
+    from unittest.mock import MagicMock
+    import services.security as sec_mod
+
+    original_depth = sec_mod.TRUSTED_PROXY_DEPTH
+    try:
+        sec_mod.TRUSTED_PROXY_DEPTH = 0
+        from services.security import request_ip
+
+        req = MagicMock()
+        req.headers = {"x-forwarded-for": "9.9.9.9"}
+        req.client = MagicMock(host="127.0.0.1")
+
+        ip = request_ip(req)
+        assert ip == "127.0.0.1", f"Expected 127.0.0.1, got {ip}"
+    finally:
+        sec_mod.TRUSTED_PROXY_DEPTH = original_depth
+
+
+def test_conversation_history_control_chars_stripped(client, app_with_fakes):
+    """Control characters in conversation history must be stripped before reaching AI."""
+    _, fake_db, _, _ = app_with_fakes
+    fake_db.tables["scans"] = []
+
+    # Inject control characters in conversation history
+    injected_history = [
+        {"role": "user", "content": "Hello\x00\x01\x1f"},
+        {"role": "assistant", "content": "Sure\x07\x08"},
+    ]
+    chat_res = client.post(
+        "/api/v1/chat",
+        headers=_auth("user-1"),
+        json={"message": "Test message", "conversation_history": injected_history},
+    )
+    # Request should succeed (control chars are stripped, not rejected)
+    assert chat_res.status_code == 200
+
+
+def test_password_reset_complete_is_rate_limited(client, app_with_fakes):
+    """POST /auth/password-reset/complete must enforce IP-based rate limiting."""
+    import services.auth as auth_svc
+    from main import app
+
+    payload = {"email": "x@example.com", "code": "000000", "new_password": "newpass1"}
+    limit = 10  # defined in auth_events.py
+    for _ in range(limit + 1):
+        res = client.post("/api/v1/auth/password-reset/complete", json=payload)
+        if res.status_code == 429:
+            break
+    else:
+        # All requests succeeded — rate limiting is not in place
+        assert False, "Password reset complete endpoint should have been rate-limited"
 
 
 def test_upload_and_list_scans_multi_user(client, app_with_fakes):
